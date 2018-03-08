@@ -1,0 +1,448 @@
+-----
+
+This file can be opened with emacs and mar-mode,
+Cf. also [Weave doc](http://weavejl.mpastell.com/stable/).
+
+For more details, see sipc-toy.mdw
+
+<<>>=
+# Define the command () to construct sipc.html file from this file:
+import Weave
+p() = Weave.weave("sipc.mdw")
+
+import Plots
+Plots.gr(); # Plots will use GR as backend
+@ 
+
+-----
+
+Here we define parameters. Please note that `:D` is just a Julia symbol.
+This is more efficient than to use the string `"D"` as a key.
+
+<<>>=
+params = Dict{Symbol,Any}(:λ  => 1.0,
+                          :D  => 0.5,
+                          :Na => 600,
+                          :Nb => 100)
+params[:w] = params[:D]*params[:Nb]/params[:Na];
+maxdiff(a, b) = maximum(abs.(a - b))
+@ 
+
+## Field in vacuum
+
+The field has a time dependence $e^{-i k_t t}$
+
+For an field at normal incidence on a centered slit, the field is symmetric.
+First mode is $H_y(t,x,z) = e^{i k_z z - i k_t t}$ with $k_z = k_t$,
+$k_t = 2 \pi$.
+
+General symmetric modes are the functions
+$H_{ya}(t,x,z) = \cos(a 2 \pi x/D) e^{i k_z z - i k_t t}$
+with $\frac{k_{za}}{k_t} = \sqrt{1 - (a/D)^2}$, $a = 0\ldots$ an non-negative integer.
+
+
+## Field in the slit
+
+In the slit, the field is also symmetric,
+$H_{yb}(t,x,z) = \cos(b 2 \pi x/w) e^{i k_{zb} z - i k_t t}$
+with $\frac{k_{zb}}{k_t} = \sqrt{1 - (b/w)^2}$,
+$b = 0\ldots$ a non-negative integer.
+
+
+## Square root determination
+
+In both free-space and perfect-metal slit domains the $k_z$ component
+are either real or purely imaginary. We want these values to be
+positive in both cases. This is Maystre's square root determination `msqrt`.
+To construct clean real or pure imaginary from real value,
+`clean_msqrt` should be used.
+
+<<>>=
+msqrt(zin) = sqrt(1im)*(sqrt(-1im*zin))
+clean_msqrt(x::AbstractFloat) = x < 0 ? Complex(0.0, sqrt(-x)) : Complex(sqrt(x), 0.0)
+@
+
+## Field equations
+
+The $E_x$ field is obtained from $E_x = D_x$, and $\partial_t D_x = -\partial_z H_y$:
+$E_x = \frac{k_z}{k_t} H_y$.
+
+
+The $E_z$ electric field is obtained from $E_z = D_z$, and
+$-i k_t D_z = \partial_x H_y$, or $E_z = \frac{i}{k_t} \partial_x H_y$.
+
+Then in the slit $E_{zb} = \frac{-i w}{2 b \pi k_t}\sin(b 2 \pi x/w) e^{i k_{zb} z - i k_t t}$
+
+# Interface equations
+
+For an excitation from the top vacuum half space, the field at $z = 0$ is
+
+$H_{ya}(x) = \sum_{a'} \cos(x \frac{2 \pi}{D} a') \left[(1_{aa} + S_{aa})U\right]_{a'}$,
+
+and the electric field is
+
+$E_{xa}(x) = \sum_{a'} \cos(x \frac{2 \pi}{D} a') \frac{k_{za'}}{k_t} \left[(-1_{aa} + S_{aa})U\right]_{a'}$.
+
+At the entry of the slit, the field is
+
+$H_{yb}(x) = \sum_{b'} \cos(x \frac{2 \pi}{w} b') \left[S_{ba} U\right]_{b'}$
+
+and the electric field is
+
+$E_{xb}(x) = \sum_{b'}  \cos(x \frac{2 \pi}{w} b') \frac{\kappa_{zb'}}{k_t} \left[-S_{ba} U\right]_{b'}$.
+
+On the slit aperture, we have the equations
+
+$H_{ya}(x) = H_{yb}(x)$
+$E_{xa}(x) = E_{xb}(x)$
+
+On the perfect conductor surface, we have
+
+$E_{xa}(x) = 0$
+
+# General formulation
+
+Continuity of fields:
+
+$\sigma_{\beta \alpha} H_{\alpha a} \left(1_{a a} + S_{a a}\right) = H_{\beta b} S_{b a}$
+$\sigma_{\tilde{\beta} \alpha} E_{\alpha a} \left(-1_{a a} + S_{a a}\right) = 0_{\tilde{\beta} a}$
+$\sigma_{\beta \alpha} E_{\alpha a} \left(-1_{a a} + S_{a a}\right) = -E_{\beta b} S_{b a}$
+
+The $\sigma_{\beta \alpha}$ and $\sigma_{\alpha \beta}$ contains a 1 when $\alpha$ and $\beta$
+correspond to the same $x$ point at the slit entry. One is the transposed of the other.
+
+The $\sigma_{\tilde{\beta}} \alpha$ matrix contains a 1 when $\tilde{\beta}$ and
+$\alpha$ correspond to the same $x$ point on the perfect conductor surface.
+
+These two last equations can be combined as
+
+$E_{\alpha a} \left(-1_{a a} + S_{a a}\right) = - \sigma_{\alpha \beta} E_{\beta b} S_{b a}$
+
+Introducing
+
+$h_{b a} = H_{b \beta}^{-1} \sigma_{\beta \alpha} H_{\alpha a}$
+$e_{a b} = E_{a \alpha}^{-1} \sigma_{\alpha \beta} E_{\beta b}$
+
+we have then the two equations
+
+$S_{ba} = h_{ba} (1_{aa} + S_{aa})$
+$-1_{aa} + S_{aa} = -e_{ab} S_{ba}$
+
+which can be solved as
+
+$S_{ba} = \left(1_{bb} + h_{ba} e_{ab}\right)^{-1}\left(2 h_{ba}\right)$
+$S_{aa} = \left(1_{aa} + e_{ab} h_{ba}\right)^{-1}\left(1_{aa} - e_{ab} h_{ba}\right)$
+
+This $S_{aa}$ matrix can be more conveniently computed from
+
+$S_{aa} = 1 - e_{ab} S_{ba}$
+
+
+For wave coming from the bottom:
+
+$H_{\beta b} \left(1_{bb} + S_{bb}\right) = \sigma_{\beta \alpha} H_{\alpha a} S_{a b}$
+$E_{\alpha a} S_{a b} = \sigma_{\alpha\beta} E_{\beta b} \left(1_{b b} - S_{b b}\right)$
+
+Thus we obtain
+
+$1_{b b} + S_{b b} = h_{b a} S_{a b}$
+$S_{a b} = e_{a b} - e_{a b} S_{b b}$
+
+which can be solved as
+
+$S_{bb} = \left(1_{bb} + h_{ba} e_{ab}\right)^{-1} \left(-1_{bb} + e_{ba} e_{ab}\right)$
+$S_{ab} = \left(1_{aa} + e_{ab} h_{ba}\right)^{-1} \left(2 e_{ab}\right)$
+
+The $S_{ab}$ matrix can be more conveniently computed from
+
+$S_{a b} = e_{a b} \left(1_{bb} - S_{b b}\right)$
+
+All these formulas are similar to Fresnel formulas. The $e_{ab}$ and $h_{ba}$ can be rectangular.
+
+## Computations
+
+<<>>=
+function compute_ks(params)
+
+    kxaN = collect(0:(params[:Na]-1))*params[:λ]/params[:D]; # kxN = multiple of 1/D
+    kzaN = clean_msqrt.(1.0 - kxaN.^2);
+    kxbN = collect(0:(params[:Nb]-1))*params[:λ]/params[:w]; # kxN = multiple of 1/w
+    kzbN = clean_msqrt.(1.0 - kxbN.^2);
+    return Dict{Symbol,Any}(:kxaN => kxaN,
+                            :kzaN => kzaN,
+                            :kxbN => kxbN,
+                            :kzbN => kzbN)
+end
+
+
+function compute_with_matrices(params)
+    eyea = Diagonal(ones(params[:Na]));
+    eyeb = Diagonal(ones(params[:Nb]));
+
+    xx_a_full = params[:D]*((-params[:Na]+0.5):1:(params[:Na]-0.5))/(2*params[:Na]);
+    assert(xx_a_full[1] + xx_a_full[end] == 0)
+
+    xx_b_full = xx_a_full[((params[:Na]-params[:Nb])+1):((params[:Na]+params[:Nb]))];
+    assert(xx_b_full[1] + xx_b_full[end] == 0)
+
+    xx_a = xx_a_full[(params[:Na]+1):end]; # span over half-width D/2
+    xx_b = xx_b_full[(params[:Nb]+1):end]; # span over half-width w/2
+    assert(xx_a[1] == xx_b[1])
+    assert(xx_a[1] + xx_a[end] == params[:D]/2)
+    assert(xx_b[1] + xx_b[end] - params[:w]/2 < 1e-12)
+
+    ks = compute_ks(params)
+    
+    Hαa = cospi.(2*xx_a*ks[:kxaN].'); # cos 2 pi xx kxN
+    # Explicit inverse matrix
+    Hinvaα = cospi.(2*ks[:kxaN]*xx_a.'); Hinvaα[1,:] /= 2; Hinvaα /= params[:Na]/2;
+    assert(maximum(abs.(Hinvaα*Hαa - eyea)) < 1e-12)
+    
+    Eαa = Hαa*Diagonal(ks[:kzaN]);
+    # Explicit inverse matrix
+    Einvaα = Diagonal(1.0./ks[:kzaN])*Hinvaα;
+    assert(maximum(abs.(Einvaα*Eαa - eyea)) < 1e-10)
+    
+    Hβb = cospi.(2*xx_b*ks[:kxbN].'); # cos 2 pi xx kxN
+    # Explicit inverse matrix
+    Hinvbβ = cospi.(2*ks[:kxbN]*xx_b.'); Hinvbβ[1,:] /= 2; Hinvbβ /= params[:Nb]/2;
+    assert(maximum(abs.(Hinvbβ*Hβb - eyeb)) < 1e-12)
+    
+    Eβb = Hβb*Diagonal(ks[:kzbN]);
+    # Explicit inverse matrix
+    Einvbβ = Diagonal(1.0./ks[:kzbN])*Hinvbβ;
+    assert(maxdiff(Einvbβ*Eβb, eyeb) < 1e-10)
+    
+    # rectangular matrices
+    hba = Hinvbβ*Hαa[1:params[:Nb],:];
+    eab = Einvaα[:,1:params[:Nb]]*Eβb;
+    
+    Sba = (eyeb + hba*eab)\(2*hba);
+    Saa = eyea - eab*Sba;
+    Saat = (eyea + eab*hba)\(eyea - eab*hba);
+    assert(maxdiff(Saa, Saat) < 1e-14)
+    
+    Sbb = (eyeb + hba*eab)\(-eyeb + hba*eab);
+    Sab = eab*(eyeb - Sbb);
+    Sabt = (eyea + eab*hba)\(2*eab);
+    assert(maxdiff(Sab, Sabt) < 1e-14)
+    
+    # energy conservation a->b
+    energya = abs2(Sba[1,1])*params[:w]/params[:D] + abs2(Saa[1,1])
+    assert(maxdiff(energya, 1.0) < 1e-14)
+    
+    # energy conservation b->a
+    energyb = abs2(Sab[1,1])*params[:D]/params[:w] + abs2(Sbb[1,1])
+    assert(maxdiff(energyb, 1.0) < 1e-14)
+    
+    # reciprocity
+    assert(maxdiff(abs2(Sba[1,1])*params[:w]/params[:D], abs2(Sab[1,1])*params[:D]/params[:w]) < 1e-14)
+    
+    return Dict{Symbol,Any}(:xx_a => xx_a,
+                            :xx_b => xx_b,
+                            :ks => ks,
+                            :Hαa => Hαa,
+                            :Eαa => Eαa,
+                            :Hβb => Hβb,
+                            :Eβb => Eβb,
+                            :hba => hba,
+                            :Eβb => Eβb,
+                            :eab => eab,
+                            :Saa => Saa,
+                            :Sab => Sab,
+                            :Sba => Sba,
+                            :Sbb => Sbb)
+end
+@ 
+
+
+# Continuous formulation
+
+## Magnetic field
+
+$H_{\alpha a} = \cos(\alpha \frac{2 \pi}{D} a)$
+$H_{a \alpha}^{-1} = \frac{2}{D} \cos(a \frac{2 \pi}{D} \alpha) \; \mathrm{if} \; a \ne 0,
+H_{0 \alpha}^{-1} = \frac{1}{D}$
+
+$H_{\beta b} = \cos(\beta \frac{2 \pi}{w} b)$
+$H_{b \beta}^{-1} = \frac{2}{w} \cos(b \frac{2 \pi}{w} \beta) \; \mathrm{if} \; b \ne 0,
+H_{0 \beta}^{-1} = \frac{1}{w}$
+
+We can verify the formulation of inverse operators
+
+$\int_{-D/2}^{D/2} H_{a \alpha}^{-1} H_{\alpha a'} d\alpha = \delta_{a a'}$
+$\int_{-w/2}^{w/2} H_{b \beta}^{-1} H_{\beta b'} d\beta = \delta_{b b'}$
+
+and compute the $h_{ba}$ matrix which is involved together with $e_{ab}$ in $S$-matrices computation (see before).
+
+$h_{b a} = \int_{-w/2}^{w/2} \frac{2}{w} \cos(b \frac{2 \pi}{w} x) \cos(x \frac{2 \pi}{D} a) dx
+= \mathrm{sinc}_{\pi}(b - a\frac{w}{D}) + \mathrm{sinc}_{\pi}(b + a\frac{w}{D})
+\; \mathrm{if} \; b \ne 0$
+
+$h_{0 a} = \int_{-w/2}^{w/2} \frac{1}{w} \cos(a \frac{2 \pi}{D} x) dx
+= \mathrm{sinc}_{\pi}(a\frac{w}{D})$.
+
+## Electric field
+
+$E_{\alpha a} = \frac{k_{za}}{k_t} \cos(\alpha \frac{2 \pi}{D} a)$
+$E_{a \alpha}^{-1} = \frac{2 k_t}{k_{za} D} \cos(a \frac{2 \pi}{D} \alpha) \; \mathrm{if} \; a \ne 0,
+E_{0 \alpha}^{-1} = \frac{k_t}{k_{za} D}$
+
+$E_{\beta b} = \frac{k_{zb}}{k_t} \cos(\beta \frac{2 \pi}{w} b)$
+$E_{b \beta}^{-1} = \frac{2 k_t}{k_{zb} w} \cos(b \frac{2 \pi}{w} \beta) \; \mathrm{if} \; b \ne 0,
+E_{0 \beta}^{-1} = \frac{k_t}{k_{zb} w}$
+
+We can verify the formulation of inverse operators
+
+$\int_{-D/2}^{D/2} E_{a \alpha}^{-1} E_{\alpha a'} d\alpha = \delta_{a a'}$
+$\int_{-w/2}^{w/2} E_{b \beta}^{-1} E_{\beta b'} d\beta = \delta_{b b'}$
+
+and compute the $e_{ab}$ matrix which is involved together with $h_{ba}$ in $S$-matrices computation (see before).
+
+$e_{ab} = \int_{-w/2}^{w/2} \frac{2 k_{zb}}{k_{za} D} \cos(a \frac{2 \pi}{D} x) \cos(x \frac{2 \pi}{w} b) dx
+= \frac{k_{zb} w}{k_{za} D}\left(\mathrm{sinc}_{\pi}(b - a\frac{w}{D}) + \mathrm{sinc}_{\pi}(b + a\frac{w}{D})\right)
+\; \mathrm{if} \; a \ne 0$
+
+$e_{0 b} = \int_{-w/2}^{w/2} \frac{1}{w} \cos(a \frac{2 \pi}{D} x) dx
+= \frac{k_{zb} w}{k_{za} D} \mathrm{sinc}_{\pi}(b)$.
+
+
+<<>>=
+function compute_with_sincs(params)
+    eyea = Diagonal(ones(params[:Na]));
+    eyeb = Diagonal(ones(params[:Nb]));
+
+    ks = compute_ks(params)
+    kzaN = ks[:kzaN]
+    kzbN = ks[:kzbN]
+        
+    hba = Array{Complex{Float64},2}(params[:Nb],params[:Na]);
+    eab = Array{Complex{Float64},2}(params[:Na],params[:Nb]);
+
+    sf = params[:w]/params[:D]
+    for ia in 1:params[:Na]
+        a = ia - 1
+        hba[1, ia] = sinc(a*sf)
+        for ib in 2:params[:Nb]
+            b = ib - 1
+            hba[ib, ia] = sinc(b - a*sf) + sinc(b + a*sf)
+        end
+    end
+    
+    for ib in 1:params[:Nb]
+        b = ib - 1
+        eab[1, ib] = sf*(kzbN[ib]/kzaN[1])*sinc(b)
+        for ia in 2:params[:Na]
+            a = ia - 1
+            eab[ia, ib] = sf*(kzbN[ib]/kzaN[ia])*(sinc(b - a*sf) + sinc(b + a*sf))
+        end
+    end
+    
+    Sba = (eyeb + hba*eab)\(2*hba);
+    Saa = eyea - eab*Sba;
+    Saat = (eyea + eab*hba)\(eyea - eab*hba);
+    assert(maxdiff(Saa, Saat) < 1e-14)
+    
+    Sbb = (eyeb + hba*eab)\(-eyeb + hba*eab);
+    Sab = eab*(eyeb - Sbb);
+    Sabt = (eyea + eab*hba)\(2*eab);
+    assert(maxdiff(Sab, Sabt) < 1e-14)
+    
+    # energy conservation a->b
+    energya = abs2(Sba[1,1])*params[:w]/params[:D] + abs2(Saa[1,1])
+    assert(maxdiff(energya, 1.0) < 1e-14)
+    
+    # energy conservation b->a
+    energyb = abs2(Sab[1,1])*params[:D]/params[:w] + abs2(Sbb[1,1])
+    assert(maxdiff(energyb, 1.0) < 1e-14)
+    
+    # reciprocity
+    assert(maxdiff(abs2(Sba[1,1])*params[:w]/params[:D], abs2(Sab[1,1])*params[:D]/params[:w]) < 1e-14)
+
+    return Dict{Symbol,Any}(:Saa => Saa,
+                            :Sab => Sab,
+                            :Sba => Sba,
+                            :Sbb => Sbb)
+end
+@ 
+
+<<>>=
+function cm(params, Nb)
+    params[:Nb] = Nb
+    params[:Na] = 6*Nb
+    params[:w] = params[:D]*params[:Nb]/params[:Na]
+    d = compute_with_matrices(params)
+    return d[:Saa][1,1]
+end
+
+function cs(params, Na, Nb)
+    params[:Na] = Na
+    params[:Nb] = Nb
+    d = compute_with_sincs(params)
+    return d[:Saa][1,1]
+end
+@ 
+
+<<>>=
+rbest = 0.5335228921628465 # rbest = abs2(cs(params, 1000))
+
+ir = 1:100
+rm = Array{Float64, 1}(length(ir))
+rs100 = Array{Float64, 1}(length(ir))
+rs200 = Array{Float64, 1}(length(ir))
+rs300 = Array{Float64, 1}(length(ir))
+rs090 = Array{Float64, 1}(length(ir))
+rs110 = Array{Float64, 1}(length(ir))
+rs098 = Array{Float64, 1}(length(ir))
+rs102 = Array{Float64, 1}(length(ir))
+
+
+for i in 1:length(ir)
+    #println(ir[i])
+    rm[i] = abs2(cm(params, ir[i]));
+end
+
+for i in 1:length(ir)
+    #println(ir[i])
+    rs100[i] = abs2(cs(params, 6*ir[i], ir[i]));
+end
+
+for i in 1:length(ir)
+    #println(ir[i])
+    rs200[i] = abs2(cs(params, 6*ir[i], 2*ir[i]));
+end
+
+for i in 1:length(ir)
+    #println(ir[i])
+    rs300[i] = abs2(cs(params, 6*ir[i], 3*ir[i]));
+end
+
+for i in 1:length(ir)
+    #println(ir[i])
+    rs090[i] = abs2(cs(params, 6*ir[i], Int(round(0.9*ir[i]))));
+end
+
+for i in 1:length(ir)
+    #println(ir[i])
+    rs110[i] = abs2(cs(params, 6*ir[i], Int(round(1.1*ir[i]))));
+end
+
+for i in 1:length(ir)
+    #println(ir[i])
+    rs098[i] = abs2(cs(params, 6*ir[i], Int(round(0.99*ir[i]))));
+end
+
+for i in 1:length(ir)
+    #println(ir[i])
+    rs102[i] = abs2(cs(params, 6*ir[i], Int(round(1.01*ir[i]))));
+end
+
+Plots.plot(ir, abs.(rm - rbest), yscale = :log10, label="matrix", xlabel="Nb", ylabel="error")
+Plots.plot!(ir, abs.(rs100 - rbest), yscale = :log10, label="rsinc 1")
+Plots.plot!(ir, abs.(rs200 - rbest), yscale = :log10, label="rsinc 2")
+Plots.plot!(ir, abs.(rs300 - rbest), yscale = :log10, label="rsinc 3")
+Plots.plot!(ir, abs.(rs090 - rbest), yscale = :log10, label="rsinc 0.9")
+Plots.plot!(ir, abs.(rs110 - rbest), yscale = :log10, label="rsinc 1.1")
+Plots.plot!(ir, abs.(rs098 - rbest), yscale = :log10, label="rsinc 0.98")
+Plots.plot!(ir, abs.(rs102 - rbest), yscale = :log10, label="rsinc 1.02")
+@ 
