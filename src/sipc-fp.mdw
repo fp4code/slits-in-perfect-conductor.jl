@@ -1,0 +1,929 @@
+-----
+
+This file can be opened with emacs and mar-mode,
+Cf. also [Weave doc](http://weavejl.mpastell.com/stable/).
+
+For more details, see sipc-toy.mdw, sipc.mdw
+
+<<>>=
+# Define the command () to construct sipc-fp.html file from this file:
+import Weave
+p() = Weave.weave("sipc-fp.mdw")
+
+using NamedTuples
+import Plots
+Plots.gr(); # Plots will use GR as backend
+@ 
+
+-----
+
+Here we define parameters. Please note that `:D` is just a Julia symbol.
+This is more efficient than to use the string `"D"` as a key.
+
+<<>>=
+params = Dict{Symbol,Any}(:λ  => 1.0,
+                          :D  => 0.5,
+                          :Na => 600,
+                          :Nb => 100)
+params[:w] = params[:D]*params[:Nb]/params[:Na];
+maxdiff(a, b) = maximum(abs.(a - b))
+@ 
+
+## Field in vacuum
+
+The field has a time dependence $e^{-i k_t t}$
+
+For an field at normal incidence on a centered slit, the field is symmetric.
+First mode is $H_y(t,x,z) = e^{i k_z z - i k_t t}$ with $k_z = k_t$,
+$k_t = 2 \pi$.
+
+General symmetric modes are the functions
+
+$H_{ya}(t,x,z) = \cos(a 2 \pi x/D) e^{i k_z z - i k_t t}$
+
+with $\frac{k_{za}}{k_t} = \sqrt{1 - (a/D)^2}$, $a = 0\ldots$ an non-negative integer.
+
+
+## Field in the slit
+
+In the slit, the field is also symmetric,
+$H_{yb}(t,x,z) = \cos(b 2 \pi x/w) e^{i k_{zb} z - i k_t t}$
+with $\frac{k_{zb}}{k_t} = \sqrt{1 - (b/w)^2}$,
+$b = 0\ldots$ a non-negative integer.
+
+
+## Square root determination
+
+In both free-space and perfect-metal slit domains the $k_z$ component
+are either real or purely imaginary. We want these values to be
+positive in both cases. This is Maystre's square root determination `msqrt`.
+To construct clean real or pure imaginary from real value,
+`clean_msqrt` should be used.
+
+<<>>=
+msqrt(zin) = sqrt(1im)*(sqrt(-1im*zin))
+clean_msqrt(x::AbstractFloat) = x < 0 ? Complex(0.0, sqrt(-x)) : Complex(sqrt(x), 0.0)
+@
+
+## Field equations
+
+The $E_x$ field is obtained from $E_x = D_x$, and $\partial_t D_x = -\partial_z H_y$:
+$E_x = \frac{k_z}{k_t} H_y$.
+
+
+The $E_z$ electric field is obtained from $E_z = D_z$, and
+$-i k_t D_z = \partial_x H_y$, or $E_z = \frac{i}{k_t} \partial_x H_y$.
+
+Then in the slit $E_{zb} = \frac{-i w}{2 b \pi k_t}\sin(b 2 \pi x/w) e^{i k_{zb} z - i k_t t}$
+
+# Interface equations
+
+For an excitation from the top vacuum half space, the field at $z = 0$ is
+
+$H_{ya}(x) = \sum_{a'} \cos(x \frac{2 \pi}{D} a') \left[(1_{aa} + S_{aba})U\right]_{a'}$,
+
+and the electric field is
+
+$E_{xa}(x) = \sum_{a'} \cos(x \frac{2 \pi}{D} a') \frac{k_{za'}}{k_t} \left[(-1_{aa} + S_{aba})U\right]_{a'}$.
+
+At the entry of the slit, the field is
+
+$H_{yb}(x) = \sum_{b'} \cos(x \frac{2 \pi}{w} b') \left[S_{ba} U\right]_{b'}$
+
+and the electric field is
+
+$E_{xb}(x) = \sum_{b'}  \cos(x \frac{2 \pi}{w} b') \frac{\kappa_{zb'}}{k_t} \left[-S_{ba} U\right]_{b'}$.
+
+On the slit aperture, we have the equations
+
+$H_{ya}(x) = H_{yb}(x)$
+
+$E_{xa}(x) = E_{xb}(x)$
+
+On the perfect conductor surface, we have
+
+$E_{xa}(x) = 0$
+
+# General formulation
+
+Continuity of fields:
+
+$\sigma_{\beta \alpha} H_{\alpha a} \left(1_{a a} + S_{aba}\right) = H_{\beta b} S_{b a}$
+
+$E_{\alpha a} \left(-1_{a a} + S_{aba}\right) = - \sigma_{\alpha \beta} E_{\beta b} S_{b a}$
+
+This last equation takes into account the fact that $E_x = 0$ on gratin surface.
+
+Introducing
+
+$h_{b a} = H_{b \beta}^{-1} \sigma_{\beta \alpha} H_{\alpha a}$
+
+$e_{a b} = E_{a \alpha}^{-1} \sigma_{\alpha \beta} E_{\beta b}$
+
+we have then the two equations
+
+$S_{ba} = h_{ba} (1_{aa} + S_{aba})$
+
+$-1_{aa} + S_{aba} = -e_{ab} S_{ba}$
+
+which can be solved as
+
+$S_{ba} = \left(1_{bb} + h_{ba} e_{ab}\right)^{-1}\left(2 h_{ba}\right)$
+
+$S_{aba} = 1 - e_{ab} S_{ba}$
+
+A Fresnel-like formula can be used, but involving a division by an $N_a \times N_a$ matrix:
+
+$S_{aba} = \left(1_{aa} + e_{ab} h_{ba}\right)^{-1}\left(1_{aa} - e_{ab} h_{ba}\right)$
+
+
+
+For wave coming from the bottom:
+
+$H_{\beta b} \left(1_{bb} + S_{bab}\right) = \sigma_{\beta \alpha} H_{\alpha a} S_{a b}$
+
+$E_{\alpha a} S_{a b} = \sigma_{\alpha\beta} E_{\beta b} \left(1_{b b} - S_{bab}\right)$
+
+Thus we obtain
+
+$1_{b b} + S_{bab} = h_{b a} S_{a b}$
+
+$S_{a b} = e_{a b} - e_{a b} S_{bab}$
+
+which can be solved as
+
+$S_{bab} = \left(1_{bb} + h_{ba} e_{ab}\right)^{-1} \left(-1_{bb} + e_{ba} e_{ab}\right)$
+
+$S_{a b} = e_{a b} \left(1_{bb} - S_{bab}\right)$
+
+As previously, a Fresnel-like formula can be used,
+but involving a division by an $N_a \times N_a$ matrix:
+
+$S_{ab} = \left(1_{aa} + e_{ab} h_{ba}\right)^{-1} \left(2 e_{ab}\right)$
+
+
+In these formulas the $e_{ab}$ and $h_{ba}$ matrices can be rectangular. It will be shown later
+that best results are obtained when the number of modes in the slit is reduced to $w/D$ times
+the number of modes in the free air.
+
+## Computations
+
+<<>>=
+function compute_ks(params)
+
+    kxaN = collect(0:(params[:Na]-1))*params[:λ]/params[:D]; # kxN = multiple of 1/D
+    kzaN = clean_msqrt.(1.0 - kxaN.^2);
+    kxbN = collect(0:(params[:Nb]-1))*params[:λ]/params[:w]; # kxN = multiple of 1/w
+    kzbN = clean_msqrt.(1.0 - kxbN.^2);
+    return Dict{Symbol,Any}(:kxaN => kxaN,
+                            :kzaN => kzaN,
+                            :kxbN => kxbN,
+                            :kzbN => kzbN)
+end
+@ 
+
+
+# Continuous formulation
+
+## Magnetic field
+
+$H_{\alpha a} = \cos(\alpha \frac{2 \pi}{D} a)$
+
+$H_{a \alpha}^{-1} = \frac{2}{D} \cos(a \frac{2 \pi}{D} \alpha) \; \mathrm{if} \; a \ne 0,
+H_{0 \alpha}^{-1} = \frac{1}{D}$
+
+$H_{\beta b} = \cos(\beta \frac{2 \pi}{w} b)$
+
+$H_{b \beta}^{-1} = \frac{2}{w} \cos(b \frac{2 \pi}{w} \beta) \; \mathrm{if} \; b \ne 0,
+H_{0 \beta}^{-1} = \frac{1}{w}$
+
+We can verify the formulation of inverse operators
+
+$\int_{-D/2}^{D/2} H_{a \alpha}^{-1} H_{\alpha a'} d\alpha = \delta_{a a'}$
+
+$\int_{-w/2}^{w/2} H_{b \beta}^{-1} H_{\beta b'} d\beta = \delta_{b b'}$
+
+and compute the $h_{ba}$ matrix which is involved
+together with $e_{ab}$ in $S$-matrices computation (see before).
+
+$h_{b a} = \int_{-w/2}^{w/2} \frac{2}{w} \cos(b \frac{2 \pi}{w} x) \cos(x \frac{2 \pi}{D} a) dx
+= \mathrm{sinc}_{\pi}(b - a\frac{w}{D}) + \mathrm{sinc}_{\pi}(b + a\frac{w}{D})
+\; \mathrm{if} \; b \ne 0$
+
+$h_{0 a} = \int_{-w/2}^{w/2} \frac{1}{w} \cos(a \frac{2 \pi}{D} x) dx
+= \mathrm{sinc}_{\pi}(a\frac{w}{D})$.
+
+## Electric field
+
+$E_{\alpha a} = \frac{k_{za}}{k_t} \cos(\alpha \frac{2 \pi}{D} a)$
+
+$E_{a \alpha}^{-1} = \frac{2 k_t}{k_{za} D}
+\cos(a \frac{2 \pi}{D} \alpha) \; \mathrm{if} \; a \ne 0,
+E_{0 \alpha}^{-1} = \frac{k_t}{k_{za} D}$
+
+$E_{\beta b} = \frac{k_{zb}}{k_t} \cos(\beta \frac{2 \pi}{w} b)$
+
+$E_{b \beta}^{-1} = \frac{2 k_t}{k_{zb} w}
+\cos(b \frac{2 \pi}{w} \beta) \; \mathrm{if} \; b \ne 0,
+E_{0 \beta}^{-1} = \frac{k_t}{k_{zb} w}$
+
+We can verify the formulation of inverse operators
+
+$\int_{-D/2}^{D/2} E_{a \alpha}^{-1} E_{\alpha a'} d\alpha = \delta_{a a'}$
+
+$\int_{-w/2}^{w/2} E_{b \beta}^{-1} E_{\beta b'} d\beta = \delta_{b b'}$
+
+and compute the $e_{ab}$ matrix which is involved
+together with $h_{ba}$ in $S$-matrices computation (see before).
+
+$e_{ab} = \int_{-w/2}^{w/2} \frac{2 k_{zb}}{k_{za} D}
+\cos(a \frac{2 \pi}{D} x) \cos(x \frac{2 \pi}{w} b) dx
+= \frac{k_{zb} w}{k_{za} D}\left(
+\mathrm{sinc}_{\pi}(b - a\frac{w}{D}) + \mathrm{sinc}_{\pi}(b + a\frac{w}{D})
+\right) \; \mathrm{if} \; a \ne 0$
+
+$e_{0 b} = \int_{-w/2}^{w/2} \frac{1}{w} \cos(a \frac{2 \pi}{D} x) dx
+= \frac{k_{zb} w}{k_{za} D} \mathrm{sinc}_{\pi}(b)$.
+
+
+<<>>=
+function compute_with_sincs(params)
+    eyea = Diagonal(ones(params[:Na]));
+    eyeb = Diagonal(ones(params[:Nb]));
+
+    ks = compute_ks(params)
+    kzaN = ks[:kzaN]
+    kzbN = ks[:kzbN]
+        
+    hba = Array{Complex{Float64},2}(params[:Nb],params[:Na]);
+    eab = Array{Complex{Float64},2}(params[:Na],params[:Nb]);
+
+    sf = params[:w]/params[:D]
+    for ia in 1:params[:Na]
+        a = ia - 1
+        hba[1, ia] = sinc(a*sf)
+        for ib in 2:params[:Nb]
+            b = ib - 1
+            hba[ib, ia] = sinc(b - a*sf) + sinc(b + a*sf)
+        end
+    end
+    
+    for ib in 1:params[:Nb]
+        b = ib - 1
+        eab[1, ib] = sf*(kzbN[ib]/kzaN[1])*sinc(b)
+        for ia in 2:params[:Na]
+            a = ia - 1
+            eab[ia, ib] = sf*(kzbN[ib]/kzaN[ia])*(sinc(b - a*sf) + sinc(b + a*sf))
+        end
+    end
+    
+    Sba = (eyeb + hba*eab)\(2*hba);
+    Saa = eyea - eab*Sba;
+    
+    Sbb = (eyeb + hba*eab)\(-eyeb + hba*eab);
+    Sab = eab*(eyeb - Sbb);
+    
+    # energy conservation a->b
+    energya = abs2(Sba[1,1])*params[:w]/params[:D] + abs2(Saa[1,1])
+    assert(maxdiff(energya, 1.0) < 1e-14)
+    
+    # energy conservation b->a
+    energyb = abs2(Sab[1,1])*params[:D]/params[:w] + abs2(Sbb[1,1])
+    assert(maxdiff(energyb, 1.0) < 1e-14)
+    
+    # reciprocity
+    assert(maxdiff(abs2(Sba[1,1])*params[:w]/params[:D],
+                   abs2(Sab[1,1])*params[:D]/params[:w]) < 1e-14)
+
+    return Dict{Symbol,Any}(:Saa => Saa,
+                            :Sab => Sab,
+                            :Sba => Sba,
+                            :Sbb => Sbb,
+                            :kzaN => kzaN,
+                            :kzbN => kzbN)
+end
+@ 
+
+# Slit of height $h$
+
+The $R_{aa}$ and $T_{aa}$ $S$-matrix terms of a grating of height $h$ are:
+
+$R_{aa} = S_{aba} +  S_{ab} P_b S_{bab} P_b^{\frac{1}{2}}
+\left(1_{bb} - L_b\right)^{-1}
+P_b^{\frac{1}{2}} S_{ba}$
+
+with the loop term
+
+$L_b = P_b^{\frac{1}{2}} S_{bab} P_b S_{bab} P_b^{\frac{1}{2}}$
+
+is choosen in a symmetrical form which permits to reduce size of computation,
+taking into account that many terms terms are negligible.
+
+$T_{aa} = S_{ab} P_b^{\frac{1}{2}}
+\left(1_{bb} - L_b\right)^{-1}
+P_b^{\frac{1}{2}} S_{ba}$
+
+And the internal field is obtained from the amplitudes
+
+$A = S_{ba} + S_{bab} P_b S_{bab} P_b^{\frac{1}{2}}
+\left(1_{bb} - L_b\right)^{-1}
+P_b^{\frac{1}{2}} S_{ba}$
+
+$B = S_{bab} P_b^{\frac{1}{2}}
+\left(1_{bb} - L_b\right)^{-1}
+P_b^{\frac{1}{2}} S_{ba}$
+
+The formulas, if reduced to non negligible terms, are:
+
+$\Pi_{b} = P_{b}^{\frac{1}{2}}$
+
+$L_{\tilde{b}} = \left(\Pi_{\tilde{b}}
+                       S_{\tilde{b}a\tilde{b}}
+                       \Pi_{\tilde{b}}\right)^2$
+
+$C_{\tilde{b}a} = \Pi_\tilde{b}
+                  \left(1_{\tilde{b}\tilde{b}} - L_\tilde{b}\right)^{-1}
+                  \Pi_\tilde{b} S_{\tilde{b}a}$
+
+$T_{aa} = S_{a\tilde{b}} C_{\tilde{b}a}$
+
+$B_{ba} = S_{b\tilde{b}} C_{\tilde{b}a}$
+
+$D_{\tilde{b}a} = P_{\tilde{b}} B_{\tilde{b}a}$
+
+$R_{aa} = S_{aba} + S_{a\tilde{b}} D_{\tilde{b}a}$
+
+$A_{ba} = S_{ba\tilde{b}} D_{\tilde{b}a}$
+
+<<>>=
+function grating(params, Nbt, h)
+    r = compute_with_sincs(params)
+    pibt = Diagonal(exp.((1im*pi*h/params[:λ])*r[:kzbN][1:Nbt]))
+    lbt = pibt*r[:Sbb][1:Nbt,1:Nbt]*pibt
+    cbta = pibt*((Diagonal(ones(Nbt)) - lbt^2)\(pibt*r[:Sba][1:Nbt,:])) 
+    Taa = r[:Sab][:,1:Nbt]*cbta
+    Bba = r[:Sbb][:,1:Nbt]*cbta
+    dbta = pibt^2*Bba[1:Nbt,:]
+    Raa = r[:Saa] + r[:Sab][:,1:Nbt]*dbta
+    Aba = r[:Sba] + r[:Sbb][:,1:Nbt]*dbta
+    return Dict(:Raa => Raa,
+                :Taa => Taa,
+                :Aba => Aba,
+                :Bba => Bba,
+                :kzaN => r[:kzaN],
+                :kzbN => r[:kzbN],
+                :Sbab => r[:Sbb])
+end
+@ 
+
+Now we can plot the reflectivity as a function of $h$. 
+
+<<>>=
+params[:Na] = 120
+params[:Nb] = 20
+hh = linspace(0, 1, 501)
+rr = map(h -> abs2(grating(params, 5, h)[:Raa][1,1]), hh)
+Plots.plot(hh, rr, xlabel="height", ylabel="\$R\$", label="", title="Reflectivity of grating")
+Plots.ylims!((0,1))
+@
+
+Neglecting all the terms except the first one in $P$, the pole is obtained for $\mathrm{arg}(S_{bab}) + k_{zb}*h = p \pi$,
+or $h = (-\mathrm{arg}(S_{bab}) + p \pi)/k_{zb}$.
+
+
+<<>>=
+params[:Na] = 600
+params[:Nb] = 100
+r = compute_with_sincs(params)
+h0 = -angle(r[:Sbb][1,1])/(real(r[:kzbN][1])*2*pi/params[:λ])
+r0 = abs2(grating(params, 5, h0)[:Raa][1,1])
+"h0 = $h0, r = $r0"
+@
+
+
+In the top region, the field is computed from the amplitudes $U_a = (1,0\ldots)^T$ and $R_a = R_{aa} U_a$
+
+$H_y(t,x,z) = \Re\left(\sum_{a'} e^{-i k_{t} t} \cos(x \frac{2 \pi}{D} a')
+    \left(e^{-i k_{za'} z}U_{a'} + e^{i k_{za'} z}R_{a'}\right)\right)$
+
+$E_x(t,x,z) = \Re\left(\sum_{a'} \frac{k_{za}}{k_t} e^{-i k_{t} t} \cos(x \frac{2 \pi}{D} a')
+    \left(-e^{-i k_{za'} z}U_{a'} + e^{i k_{za'} z}R_{a'}\right)\right)$
+
+$E_z(t,x,z) = \Re\left(\sum_{a'} \frac{-i \lambda a'}{D} e^{-i k_{t} t} \sin(x \frac{2 \pi}{D} a')
+    \left(e^{-i k_{za'} z}U_{a'} + e^{i k_{za'} z}R_{a'}\right)\right)$
+
+In the bottom region, the field is computed from the amplitudes $T_a = T_{aa} U_a$
+
+$H_y(t,x,z) = \Re\left(\sum_{a'} e^{-i k_{t} t} \cos(x \frac{2 \pi}{D} a')
+    \, e^{-i k_{za'} (z+h)}T_{a'}\right)$
+
+$E_x(t,x,z) = \Re\left(\sum_{a'} \frac{k_{za}}{k_t} (-1) e^{-i k_{t} t} \cos(x \frac{2 \pi}{D} a')
+    \, e^{-i k_{za'} (z+h)}T_{a'}\right)$
+
+$E_z(t,x,z) = \Re\left(\sum_{a'} \frac{-i \lambda a'}{D} e^{-i k_{t} t} \sin(x \frac{2 \pi}{D} a')
+    \, e^{-i k_{za'} (z+h)}T_{a'}\right)$
+
+
+In the metal region, the field is 0,
+and in the slit region the field is computed from the amplitudes $A_b = A_{ba} U_a$ and  $B_b = B_{ba} U_a$
+
+
+$H_y(t,x,z) = \Re\left(\sum_{b'} e^{-i k_{t} t} \cos(x \frac{2 \pi}{w} b')
+    \left(e^{-i k_{zb'} z}A_{b'} + e^{i k_{zb'} (z+h)}B_{b'}\right)\right)$
+
+$E_x(t,x,z) = \Re\left(\sum_{b'} \frac{k_{zb}}{k_t} e^{-i k_{t} t} \cos(x \frac{2 \pi}{w} b')
+    \left(-e^{-i k_{zb'} z}A_{b'} + e^{i k_{zb'} (z+h)}B_{b'}\right)\right)$
+
+$E_z(t,x,z) = \Re\left(\sum_{b'} \frac{-i \lambda b'}{w} e^{-i k_{t} t} \sin(x \frac{2 \pi}{w} b')
+    \left(e^{-i k_{zb'} z}A_{b'} + e^{i k_{zb'} (z+h)}B_{b'}\right)\right)$
+
+<<>>=
+function field(params, g, t, x, z)
+    h = params[:h]
+    kzaN = g[:kzaN]
+    kzbN = g[:kzbN]
+    R = g[:Raa][:,1]
+    T = g[:Taa][:,1]
+    A = g[:Aba][:,1]
+    B = g[:Bba][:,1]
+    ex = 0.0
+    hy = 0.0
+    ez = 0.0
+    if z > 0
+        phit = -2*t/params[:λ]
+        phix = 2*x/params[:D]
+        iphinoz = 2im*pi*kzaN/params[:λ]
+        for ia in 1:params[:Na]
+            iphiza = iphinoz[ia]*z
+            tc = cospi(phix*(ia-1))*Complex(cospi(phit), sinpi(phit))
+            ts = sinpi(phix*(ia-1))*Complex(cospi(phit), sinpi(phit))
+            if ia == 1
+                hy += tc*(exp(-iphiza) + exp(iphiza)*R[1])
+                ex += tc*kzaN[ia]*(-exp(-iphiza) + exp(iphiza)*R[1])
+                ez += ts*(-1im*params[:λ]*(ia-1)/params[:D])*(exp(-iphiza) + exp(iphiza)*R[1])
+            else
+                hy += tc*(exp(iphiza)*R[ia])
+                ex += tc*kzaN[ia]*(exp(iphiza)*R[ia])
+                ez += ts*(-1im*params[:λ]*(ia-1)/params[:D])*(exp(iphiza)*R[ia])
+            end
+        end
+    elseif z > -h
+        if -params[:w]/2 < x < params[:w]/2
+            phit = -2*t/params[:λ]
+            phix = 2*x/params[:w]
+            iphinoz = 2im*pi*kzbN/params[:λ]
+            for ib in 1:params[:Nb]
+                iphiza = -iphinoz[ib]*z
+                iphizb = iphinoz[ib]*(z+h)                
+                tc = cospi(phix*(ib-1))*Complex(cospi(phit), sinpi(phit))
+                ts = sinpi(phix*(ib-1))*Complex(cospi(phit), sinpi(phit))
+                hy += tc*(exp(iphiza)*A[ib] + exp(iphizb)*B[ib])
+                ex += tc*kzbN[ib]*(-exp(iphiza)*A[ib] + exp(iphizb)*B[ib])
+                ez += ts*(-1im*params[:λ]*(ib-1)/params[:w])*(exp(iphiza)*A[ib] + exp(iphizb)*B[ib])
+            end
+        end
+    else
+        phit = -2*t/params[:λ]
+        phix = 2*x/params[:D]
+        iphinoz = 2im*pi*kzaN/params[:λ]
+        for ia in 1:params[:Na]
+            iphiza = iphinoz[ia]*(z+h)
+            tc = cospi(phix*(ia-1))*Complex(cospi(phit), sinpi(phit))
+            ts = sinpi(phix*(ia-1))*Complex(cospi(phit), sinpi(phit))
+            hy += tc*(exp(-iphiza)*T[ia])
+            ex += tc*kzaN[ia]*(-exp(-iphiza)*T[ia])
+            ez += ts*(-1im*params[:λ]*(ia-1)/params[:D])*(exp(-iphiza)*T[ia])
+        end
+    end
+    return @NT(ex=real(ex), hy=real(hy), ez=real(ez))
+end
+@ 
+
+A more efficient way is to precompute separately $t$, $x$ and $z$ dependencies
+
+<<>>=
+function fieldoft(params, tt)
+    ft = Array{Complex{Float64},1}(length(tt))
+    for i in 1:length(tt)
+        phit = (-2.0/params[:λ])*tt[i]
+        ft[i] = Complex(cospi(phit), sinpi(phit))
+    end
+    return @NT(ex=ft, hy=ft, ez=ft)
+end
+
+function fieldofx_a(params, xx)
+    tc = Array{Complex{Float64},2}(length(xx), params[:Na])
+    ts = Array{Complex{Float64},2}(length(xx), params[:Na])
+    for ia in 1:params[:Na]
+        for ix in 1:length(xx)
+            phix = 2*xx[ix]/params[:D]
+            tc[ix, ia] = cospi(phix*(ia-1))
+            ts[ix, ia] = sinpi(phix*(ia-1))
+        end
+    end
+    return @NT(ex=tc, hy=tc, ez=ts)
+end
+        
+function fieldofx_b(params, xx)
+    tc = Array{Complex{Float64},2}(length(xx), params[:Nb])
+    ts = Array{Complex{Float64},2}(length(xx), params[:Nb])
+    for ib in 1:params[:Nb]
+        for ix in 1:length(xx)
+            if -params[:w]/2 < xx[ix] < params[:w]/2
+                phix = 2*xx[ix]/params[:w]
+                tc[ix, ib] = cospi(phix*(ib-1))
+                ts[ix, ib] = sinpi(phix*(ib-1))
+            else
+                tc[ix, ib] = 0
+                ts[ix, ib] = 0
+            end 
+        end
+    end
+    return @NT(ex=tc, hy=tc, ez=ts)
+end
+
+function fieldofz_U(params, g, zz)
+    λ = params[:λ]
+    kzaN = g[:kzaN]
+    ex = Array{Complex{Float64},1}(length(zz))
+    hy = Array{Complex{Float64},1}(length(zz))
+    ez = Array{Complex{Float64},1}(length(zz))
+    ia = 1
+    for iz in 1:length(zz)
+        f = exp(-2im*pi*kzaN[ia]*zz[iz]/λ)
+        ex[iz] = -kzaN[ia]*f
+        hy[iz] = f
+        ez[iz] = (-1im*params[:λ]*(ia-1)/params[:D])*f
+    end
+    return @NT(ex=ex, hy=hy, ez=ez)
+end
+
+function fieldofz_R(params, g, zz)
+    kzaN = g[:kzaN]
+    λ = params[:λ]
+    R = g[:Raa][:,1]
+    ex = Array{Complex{Float64},2}(length(zz), params[:Na])
+    hy = Array{Complex{Float64},2}(length(zz), params[:Na])
+    ez = Array{Complex{Float64},2}(length(zz), params[:Na])
+    for ia in 1:params[:Na]
+        for iz in 1:length(zz)
+            f = exp(2im*pi*kzaN[ia]*zz[iz]/λ)*R[ia]
+            ex[iz, ia] = kzaN[ia]*f
+            hy[iz, ia] = f
+            ez[iz, ia] = (-1im*params[:λ]*(ia-1)/params[:D])*f            
+        end
+    end
+    return @NT(ex=ex, hy=hy, ez=ez)
+end
+
+function fieldofz_T(params, g, zz)
+    h = params[:h]
+    λ = params[:λ]
+    T = g[:Taa][:,1]
+    kzaN = g[:kzaN]
+    ex = Array{Complex{Float64},2}(length(zz), params[:Na])
+    hy = Array{Complex{Float64},2}(length(zz), params[:Na])
+    ez = Array{Complex{Float64},2}(length(zz), params[:Na])
+    for ia in 1:params[:Na]
+        for iz in 1:length(zz)
+            f = exp(-2im*pi*kzaN[ia]*(zz[iz]+h)/λ)*T[ia]
+            ex[iz, ia] = -kzaN[ia]*f
+            hy[iz, ia] = f
+            ez[iz, ia] = (-1im*params[:λ]*(ia-1)/params[:D])*f            
+        end
+    end
+    return @NT(ex=ex, hy=hy, ez=ez)
+end
+
+function fieldofz_A(params, g, zz)
+    h = params[:h]
+    λ = params[:λ]
+    A = g[:Aba][:,1]
+    kzbN = g[:kzbN]
+    ex = Array{Complex{Float64},2}(length(zz), params[:Nb])
+    hy = Array{Complex{Float64},2}(length(zz), params[:Nb])
+    ez = Array{Complex{Float64},2}(length(zz), params[:Nb])
+    for ib in 1:params[:Nb]
+        for iz in 1:length(zz)
+            f = exp(-2im*pi*kzbN[ib]*zz[iz]/λ)*A[ib]
+            ex[iz, ib] = -kzbN[ib]*f
+            hy[iz, ib] = f
+            ez[iz, ib] = (-1im*params[:λ]*(ib-1)/params[:w])*f            
+        end
+    end
+    return @NT(ex=ex, hy=hy, ez=ez)
+end
+
+function fieldofz_B(params, g, zz)
+    h = params[:h]
+    λ = params[:λ]
+    B = g[:Bba][:,1]
+    kzbN = g[:kzbN]
+    ex = Array{Complex{Float64},2}(length(zz), params[:Nb])
+    hy = Array{Complex{Float64},2}(length(zz), params[:Nb])
+    ez = Array{Complex{Float64},2}(length(zz), params[:Nb])
+    for ib in 1:params[:Nb]
+        for iz in 1:length(zz)
+            f = exp(2im*pi*kzbN[ib]*(zz[iz]+h)/λ)*B[ib]
+            ex[iz, ib] = kzbN[ib]*f
+            hy[iz, ib] = f
+            ez[iz, ib] = (-1im*params[:λ]*(ib-1)/params[:w])*f            
+        end
+    end
+    return @NT(ex=ex, hy=hy, ez=ez)
+end
+
+function compute_fieldof(params, g, tt, xx, zz1, zz2, zz3)
+    assert(zz1[1] < zz1[end])
+    assert(zz1[end] <= -params[:h])
+    assert(-params[:h] <= zz2[1])
+    assert(zz2[1] < zz2[end])
+    assert(zz2[end] <= 0.0)
+    assert(0.0 <= zz3[1])
+    assert(zz3[1] < zz3[end])
+    ft = fieldoft(params, tt)
+    fx_a = fieldofx_a(params, xx)
+    fx_b = fieldofx_b(params, xx)
+    fz_T = fieldofz_T(params, g, zz1)
+    fz_A = fieldofz_A(params, g, zz2)
+    fz_B = fieldofz_B(params, g, zz2)
+    fz_U = fieldofz_U(params, g, zz3)
+    fz_R = fieldofz_R(params, g, zz3)
+    return @NT(tt=tt, xx=xx, zz1=zz1, zz2=zz2, zz3=zz3,
+               t=ft, xa=fx_a, xb=fx_b, zU=fz_U, zR=fz_R, zA=fz_A, zB=fz_B, zT=fz_T)
+end
+
+function full_fields(params, g, fof)
+    n1 = length(fof.zz1)
+    n2 = length(fof.zz2)
+    n3 = length(fof.zz3)
+    mex = Array{Float64, 3}(length(fof.tt), length(fof.xx), n1+n2+n3)
+    mhy = Array{Float64, 3}(length(fof.tt), length(fof.xx), n1+n2+n3)
+    mez = Array{Float64, 3}(length(fof.tt), length(fof.xx), n1+n2+n3)
+    for iz in 1:n1
+        println(iz)
+        for ix in 1:length(fof.xx)
+            for it in 1:length(fof.tt)
+                ex = 0.0im
+                hy = 0.0im
+                ez = 0.0im
+                for ia in 1:params[:Na]
+                    ex += fof.t.ex[it]*fof.xa.ex[ix,ia]*fof.zT.ex[iz,ia]
+                    hy += fof.t.hy[it]*fof.xa.hy[ix,ia]*fof.zT.hy[iz,ia]
+                    ez += fof.t.ez[it]*fof.xa.ez[ix,ia]*fof.zT.ez[iz,ia]
+                end
+                mex[it, ix, iz] = real(ex)
+                mhy[it, ix, iz] = real(hy)        
+                mez[it, ix, iz] = real(ez)
+            end
+        end
+    end
+    for iz in 1:n2
+        println(iz)
+        for ix in 1:length(fof.xx)
+            for it in 1:length(fof.tt)
+                ex = 0.0im
+                hy = 0.0im
+                ez = 0.0im
+                for ib in 1:params[:Nb]
+                    ex += fof.t.ex[it]*fof.xb.ex[ix,ib]*(fof.zA.ex[iz,ib] + fof.zB.ex[iz,ib])
+                    hy += fof.t.hy[it]*fof.xb.hy[ix,ib]*(fof.zA.hy[iz,ib] + fof.zB.hy[iz,ib])
+                    ez += fof.t.ez[it]*fof.xb.ez[ix,ib]*(fof.zA.ez[iz,ib] + fof.zB.ez[iz,ib])
+                end
+                mex[it, ix, n1+iz] = real(ex)
+                mhy[it, ix, n1+iz] = real(hy)        
+                mez[it, ix, n1+iz] = real(ez)
+            end
+        end
+    end
+    for iz in 1:n3
+        println(iz)
+        for ix in 1:length(fof.xx)
+            for it in 1:length(fof.tt)
+                ex = 0.0im
+                hy = 0.0im
+                ez = 0.0im
+                ex += fof.t.ex[it]*fof.xa.ex[ix,1]*fof.zU.ex[iz]
+                hy += fof.t.hy[it]*fof.xa.hy[ix,1]*fof.zU.hy[iz]
+                ez += fof.t.ez[it]*fof.xa.ez[ix,1]*fof.zU.ez[iz]
+                for ia in 1:params[:Na]
+                    ex += fof.t.ex[it]*fof.xa.ex[ix,ia]*fof.zR.ex[iz,ia]
+                    hy += fof.t.hy[it]*fof.xa.hy[ix,ia]*fof.zR.hy[iz,ia]
+                    ez += fof.t.ez[it]*fof.xa.ez[ix,ia]*fof.zR.ez[iz,ia]
+                end
+                mex[it, ix, n1+n2+iz] = real(ex)
+                mhy[it, ix, n1+n2+iz] = real(hy)        
+                mez[it, ix, n1+n2+iz] = real(ez)
+            end
+        end
+    end
+    return @NT(ex=mex, hy=mhy, ez=mez)
+end
+@ 
+
+<<>>=
+# controls
+
+params[:Nb] = 2
+params[:Na] = 12
+r = compute_with_sincs(params)
+h0 = -angle(r[:Sbb][1,1])/(real(r[:kzbN][1])*2*pi/params[:λ])
+r0 = abs2(grating(params, params[:Nb], h0)[:Raa][1,1])
+g = grating(params, params[:Nb], h0)
+params[:h] = h0
+
+
+params[:h] = 0.1
+
+g = grating(params, params[:Nb], params[:h])
+t0 = 0.01
+x0 = 0.2
+z0 = 0.01
+ee = 0.00001
+
+
+z0 = 0.001
+x0 = 0.03
+
+assert(abs(field(params, g, t0+ee, x0, z0).ex - field(params, g, t0-ee, x0, z0).ex -
+           (field(params, g, t0, x0, z0-ee).hy - field(params, g, t0, x0, z0+ee).hy)) < 1e-10)
+
+assert(abs(field(params, g, t0+ee, x0, z0).ez - field(params, g, t0-ee, x0, z0).ez -
+           (field(params, g, t0, x0+ee, z0).hy - field(params, g, t0, x0-ee, z0).hy)) < 1e-10)
+
+z0 = -0.001
+x0 = 0.03
+
+assert(abs(field(params, g, t0+ee, x0, z0).ex - field(params, g, t0-ee, x0, z0).ex -
+           (field(params, g, t0, x0, z0-ee).hy - field(params, g, t0, x0, z0+ee).hy)) < 1e-10)
+
+assert(abs(field(params, g, t0+ee, x0, z0).ez - field(params, g, t0-ee, x0, z0).ez - 
+           (field(params, g, t0, x0+ee, z0).hy - field(params, g, t0, x0-ee, z0).hy)) < 1e-10)
+
+z0 = -params[:h]-0.001
+x0 = 0.03
+
+assert(abs(field(params, g, t0+ee, x0, z0).ex - field(params, g, t0-ee, x0, z0).ex -
+           (field(params, g, t0, x0, z0-ee).hy - field(params, g, t0, x0, z0+ee).hy)) < 1e-10)
+
+assert(abs(field(params, g, t0+ee, x0, z0).ez - field(params, g, t0-ee, x0, z0).ez -
+           (field(params, g, t0, x0+ee, z0).hy - field(params, g, t0, x0-ee, z0).hy)) < 1e-10)
+
+field(params, g, t0, x0, 1e-9).ex
+field(params, g, t0, x0, -1e-9).ex
+
+params[:h] = h0
+g = grating(params, params[:Nb], params[:h])
+@ 
+
+<<>>=
+params[:Nb] = 20
+params[:Na] = 120
+params[:h] = 0.2
+
+dxx = params[:D]/(2*params[:Na])
+xx = dxx*((1:2*params[:Na]) - params[:Na] - 0.5)
+zz = -1:0.01:1
+length(zz)
+
+function compute_fields(params, g, t0, xx, zz)
+    mex = Array{Float64,2}(length(xx), length(zz))
+    mhy = Array{Float64,2}(length(xx), length(zz))
+    mez = Array{Float64,2}(length(xx), length(zz))
+    for iz in 1:length(zz)
+        println(iz)
+        for ix in 1:length(xx)
+            f = field(params, g, t0, xx[ix], zz[iz])
+            mex[ix, iz] = fof.ex
+            mhy[ix, iz] = fof.hy
+            mez[ix, iz] = fof.ez
+        end
+    end
+    return @NT(ex=mex, hy=mhy, ez=mez)
+end
+
+r = compute_with_sincs(params)
+h0 = -angle(r[:Sbb][1,1])/(real(r[:kzbN][1])*2*pi/params[:λ])
+params[:h] = 1.0*h0
+g = grating(params, params[:Nb], params[:h])
+f = compute_fields(params, g, t0, xx, zz)
+
+
+p1 = Plots.contour(xx,zz,abs.(f.ex.'),fill=true)
+p2 = Plots.contour(xx,zz,abs.(f.hy.'),fill=true)
+p3 = Plots.contour(xx,zz,abs.(f.ez.'),fill=true)
+Plots.plot(p1,p2,p3)
+
+
+Plots.plot(zz, f.ex[121, :])
+Plots.plot(zz, f.ex[50, :])
+
+Plots.plot(zz, f.hy[121, :])
+Plots.plot!(zz, f.hy[120, :])
+
+Plots.plot(zz, f.hy[50, :])
+
+Plots.plot(zz, f.ez[121, :])
+Plots.plot!(zz, f.ez[120, :])
+
+Plots.plot(zz, f.ez[50, :])
+@ 
+
+Fast version test
+
+<<>>=
+params[:Nb] = 50
+params[:Na] = 300
+h0 = -angle(r[:Sbb][1,1])/(real(r[:kzbN][1])*2*pi/params[:λ])
+params[:h] = 1.0*h0
+
+tt = [0.01]
+dxx = params[:D]/(2*params[:Na])
+xx = dxx*((1:2*params[:Na]) - params[:Na] - 0.5)
+dzz = 0.01
+zz1 = -1.0:dzz:-params[:h]
+zz2 = (zz1[end]+dzz):dzz:0.0
+zz3 = (zz2[end]+dzz):dzz:1.0
+zz1 = linspace(-1.0,-params[:h],50)
+zz3 = linspace(0,1.0,50)
+zz2 = linspace(-params[:h]+0.01,-0.01,50)
+zz = [zz1;zz2;zz3]
+
+
+
+
+g = grating(params, params[:Nb], params[:h])
+fof = compute_fieldof(params, g, tt, xx, zz1, zz2, zz3)
+f = full_fields(params, g, fof)
+
+function absclip(m, x)
+    a = abs(x)
+    if a > m
+        return m
+    else
+        return a
+    end
+end
+
+
+p1 = Plots.contour(xx,zz,absclip.(2.0, f.ex[1,:,:].'),fill=true)
+p2 = Plots.contour(xx,zz,absclip.(2.0, f.hy[1,:,:].'),fill=true)
+p3 = Plots.contour(xx,zz,absclip.(2.0, f.ez[1,:,:].'),fill=true)
+Plots.plot(p1,p2,p3)
+
+
+Plots.plot(zz, f.ex[1,2,:])
+Plots.plot!(zz, f.hy[1,120,:])
+
+
+@ 
+
+
+
+<<>>=
+params[:Nb] = 5
+params[:Na] = 30
+r = compute_with_sincs(params)
+h0 = -angle(r[:Sbb][1,1])/(real(r[:kzbN][1])*2*pi/params[:λ])
+params[:h] = 1.0*h0
+
+dxx = params[:D]/(2*params[:Na])
+xx = dxx*((1:2*params[:Na]) - params[:Na] - 0.5)
+t0 = 0.01
+tt = [t0]
+dzz = 0.01
+zz1 = -2.0:dzz:-params[:h]
+zz2 = (zz1[end]+dzz):dzz:-dzz
+zz3 = 0.0:dzz:2.0
+zz = [zz1;zz2;zz3]
+
+g = grating(params, params[:Nb], params[:h])
+f0 = compute_fields(params, g, t0, xx, zz)
+
+fof = compute_fieldof(params, g, tt, xx, zz1, zz2, zz3)
+f1 = full_fields(params, g, fof);
+
+p20 = Plots.contour(xx,zz,abs.(f0.hy[:,:].'),fill=true)
+p21 = Plots.contour(xx,zz,abs.(f1.hy[1,:,:].'),fill=true)
+
+p10 = Plots.contour(xx,zz,absclip.(2.0, f0.ex[:,:].'),fill=true)
+p11 = Plots.contour(xx,zz,absclip.(2.0, f1.ex[1,:,:].'),fill=true)
+
+
+Plots.plot(zz, f0.hy[31,:])
+Plots.plot!(zz, f1.hy[1,31,:])
+
+Plots.plot(zz, f0.ex[1,:])
+Plots.plot!(zz, f1.ex[1,1,:])
+
+Plots.plot(zz, f0.ex[31,:])
+Plots.plot!(zz, f1.ex[1,31,:])
+
+fof.t.ex[1]*fof.xa.ex[31,1]*fof.zR.ex[1,1]
+fof.t.ex[1]*fof.xa.ex[31,2]*fof.zR.ex[1,2]
+fof.t.ex[1]*fof.xa.ex[31,3]*fof.zR.ex[1,3]
+
+@ 
+
+
+

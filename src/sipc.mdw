@@ -37,7 +37,9 @@ First mode is $H_y(t,x,z) = e^{i k_z z - i k_t t}$ with $k_z = k_t$,
 $k_t = 2 \pi$.
 
 General symmetric modes are the functions
+
 $H_{ya}(t,x,z) = \cos(a 2 \pi x/D) e^{i k_z z - i k_t t}$
+
 with $\frac{k_{za}}{k_t} = \sqrt{1 - (a/D)^2}$, $a = 0\ldots$ an non-negative integer.
 
 
@@ -94,6 +96,7 @@ $E_{xb}(x) = \sum_{b'}  \cos(x \frac{2 \pi}{w} b') \frac{\kappa_{zb'}}{k_t} \lef
 On the slit aperture, we have the equations
 
 $H_{ya}(x) = H_{yb}(x)$
+
 $E_{xa}(x) = E_{xb}(x)$
 
 On the perfect conductor surface, we have
@@ -105,59 +108,62 @@ $E_{xa}(x) = 0$
 Continuity of fields:
 
 $\sigma_{\beta \alpha} H_{\alpha a} \left(1_{a a} + S_{a a}\right) = H_{\beta b} S_{b a}$
-$\sigma_{\tilde{\beta} \alpha} E_{\alpha a} \left(-1_{a a} + S_{a a}\right) = 0_{\tilde{\beta} a}$
-$\sigma_{\beta \alpha} E_{\alpha a} \left(-1_{a a} + S_{a a}\right) = -E_{\beta b} S_{b a}$
-
-The $\sigma_{\beta \alpha}$ and $\sigma_{\alpha \beta}$ contains a 1 when $\alpha$ and $\beta$
-correspond to the same $x$ point at the slit entry. One is the transposed of the other.
-
-The $\sigma_{\tilde{\beta}} \alpha$ matrix contains a 1 when $\tilde{\beta}$ and
-$\alpha$ correspond to the same $x$ point on the perfect conductor surface.
-
-These two last equations can be combined as
 
 $E_{\alpha a} \left(-1_{a a} + S_{a a}\right) = - \sigma_{\alpha \beta} E_{\beta b} S_{b a}$
+
+This last equation takes into account the fact that $E_x = 0$ on gratin surface.
 
 Introducing
 
 $h_{b a} = H_{b \beta}^{-1} \sigma_{\beta \alpha} H_{\alpha a}$
+
 $e_{a b} = E_{a \alpha}^{-1} \sigma_{\alpha \beta} E_{\beta b}$
 
 we have then the two equations
 
 $S_{ba} = h_{ba} (1_{aa} + S_{aa})$
+
 $-1_{aa} + S_{aa} = -e_{ab} S_{ba}$
 
 which can be solved as
 
 $S_{ba} = \left(1_{bb} + h_{ba} e_{ab}\right)^{-1}\left(2 h_{ba}\right)$
-$S_{aa} = \left(1_{aa} + e_{ab} h_{ba}\right)^{-1}\left(1_{aa} - e_{ab} h_{ba}\right)$
-
-This $S_{aa}$ matrix can be more conveniently computed from
 
 $S_{aa} = 1 - e_{ab} S_{ba}$
+
+A Fresnel-like formula can be used, but involving a division by an $N_a \times N_a$ matrix:
+
+$S_{aa} = \left(1_{aa} + e_{ab} h_{ba}\right)^{-1}\left(1_{aa} - e_{ab} h_{ba}\right)$
+
 
 
 For wave coming from the bottom:
 
 $H_{\beta b} \left(1_{bb} + S_{bb}\right) = \sigma_{\beta \alpha} H_{\alpha a} S_{a b}$
+
 $E_{\alpha a} S_{a b} = \sigma_{\alpha\beta} E_{\beta b} \left(1_{b b} - S_{b b}\right)$
 
 Thus we obtain
 
 $1_{b b} + S_{b b} = h_{b a} S_{a b}$
+
 $S_{a b} = e_{a b} - e_{a b} S_{b b}$
 
 which can be solved as
 
 $S_{bb} = \left(1_{bb} + h_{ba} e_{ab}\right)^{-1} \left(-1_{bb} + e_{ba} e_{ab}\right)$
-$S_{ab} = \left(1_{aa} + e_{ab} h_{ba}\right)^{-1} \left(2 e_{ab}\right)$
-
-The $S_{ab}$ matrix can be more conveniently computed from
 
 $S_{a b} = e_{a b} \left(1_{bb} - S_{b b}\right)$
 
-All these formulas are similar to Fresnel formulas. The $e_{ab}$ and $h_{ba}$ can be rectangular.
+As previously, a Fresnel-like formula can be used,
+but involving a division by an $N_a \times N_a$ matrix:
+
+$S_{ab} = \left(1_{aa} + e_{ab} h_{ba}\right)^{-1} \left(2 e_{ab}\right)$
+
+
+In these formulas the $e_{ab}$ and $h_{ba}$ matrices can be rectangular. It will be shown later
+that best results are obtained when the number of modes in the slit is reduced to $w/D$ times
+the number of modes in the free air.
 
 ## Computations
 
@@ -261,16 +267,19 @@ end
 ## Magnetic field
 
 $H_{\alpha a} = \cos(\alpha \frac{2 \pi}{D} a)$
+
 $H_{a \alpha}^{-1} = \frac{2}{D} \cos(a \frac{2 \pi}{D} \alpha) \; \mathrm{if} \; a \ne 0,
 H_{0 \alpha}^{-1} = \frac{1}{D}$
 
 $H_{\beta b} = \cos(\beta \frac{2 \pi}{w} b)$
+
 $H_{b \beta}^{-1} = \frac{2}{w} \cos(b \frac{2 \pi}{w} \beta) \; \mathrm{if} \; b \ne 0,
 H_{0 \beta}^{-1} = \frac{1}{w}$
 
 We can verify the formulation of inverse operators
 
 $\int_{-D/2}^{D/2} H_{a \alpha}^{-1} H_{\alpha a'} d\alpha = \delta_{a a'}$
+
 $\int_{-w/2}^{w/2} H_{b \beta}^{-1} H_{\beta b'} d\beta = \delta_{b b'}$
 
 and compute the $h_{ba}$ matrix which is involved together with $e_{ab}$ in $S$-matrices computation (see before).
@@ -285,16 +294,19 @@ $h_{0 a} = \int_{-w/2}^{w/2} \frac{1}{w} \cos(a \frac{2 \pi}{D} x) dx
 ## Electric field
 
 $E_{\alpha a} = \frac{k_{za}}{k_t} \cos(\alpha \frac{2 \pi}{D} a)$
+
 $E_{a \alpha}^{-1} = \frac{2 k_t}{k_{za} D} \cos(a \frac{2 \pi}{D} \alpha) \; \mathrm{if} \; a \ne 0,
 E_{0 \alpha}^{-1} = \frac{k_t}{k_{za} D}$
 
 $E_{\beta b} = \frac{k_{zb}}{k_t} \cos(\beta \frac{2 \pi}{w} b)$
+
 $E_{b \beta}^{-1} = \frac{2 k_t}{k_{zb} w} \cos(b \frac{2 \pi}{w} \beta) \; \mathrm{if} \; b \ne 0,
 E_{0 \beta}^{-1} = \frac{k_t}{k_{zb} w}$
 
 We can verify the formulation of inverse operators
 
 $\int_{-D/2}^{D/2} E_{a \alpha}^{-1} E_{\alpha a'} d\alpha = \delta_{a a'}$
+
 $\int_{-w/2}^{w/2} E_{b \beta}^{-1} E_{\beta b'} d\beta = \delta_{b b'}$
 
 and compute the $e_{ab}$ matrix which is involved together with $h_{ba}$ in $S$-matrices computation (see before).

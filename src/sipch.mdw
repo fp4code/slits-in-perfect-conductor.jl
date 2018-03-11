@@ -3,40 +3,19 @@
 This file can be opened with emacs and mar-mode,
 Cf. also [Weave doc](http://weavejl.mpastell.com/stable/).
 
+For more details, see sipc-toy.mdw and sipc.mgw
+
 <<>>=
-# Define the command () to construct sipc-t.html file from this file:
+# Define the command () to construct sipc.html file from this file:
 import Weave
-p() = Weave.weave("sipc-toy.mdw")
-# Weave.weave("sipc-toy.mdw", doctype=
-# Weave.notebook("sipc-toy.mdw")
-
-#=
-using IJulia
-notebook(detached=true)
-run(`$(IJulia.notebook_cmd[1]) notebook list`) # donne le token
-
-
-=#
+p() = Weave.weave("sipch.mdw")
 
 import Plots
 Plots.gr(); # Plots will use GR as backend
-@ 
+@
 
 -----
 
-Here we define parameters. Please note that `:D` is just a Julia symbol.
-This is more efficient than to use the string `"D"` as a key.
-
-<<>>=
-params = Dict{Symbol,Any}(:λ  => 1.0,
-                          :D  => 0.5,
-                          :Na => 600,
-                          :Nb => 100)
-params[:w] = params[:D]*params[:Nb]/params[:Na];
-eyea = Diagonal(ones(params[:Na]));
-eyeb = Diagonal(ones(params[:Nb]));
-maxdiff(a, b) = maximum(abs.(a - b))
-@ 
 
 ## Field in vacuum
 
@@ -51,28 +30,12 @@ $H_{ya}(t,x,z) = \cos(a 2 \pi x/D) e^{i k_z z - i k_t t}$
 with $\frac{k_{za}}{k_t} = \sqrt{1 - (a/D)^2}$, $a = 0\ldots$ an non-negative integer.
 
 
-<<>>=
-xx_a_full = params[:D]*((-params[:Na]+0.5):1:(params[:Na]-0.5))/(2*params[:Na]);
-assert(xx_a_full[1] + xx_a_full[end] == 0)
-Plots.plot(xx_a_full, cos.(0*2*pi*xx_a_full/params[:D]), label="\$p = 0\$")
-Plots.plot!(xx_a_full, cos.(1*2*pi*xx_a_full/params[:D]), label="\$p = 1\$")
-Plots.plot!(xx_a_full, cos.(2*2*pi*xx_a_full/params[:D]), label="\$p = 2\$")
-@ 
-
 ## Field in the slit
 
 In the slit, the field is also symmetric,
 $H_{yb}(t,x,z) = \cos(b 2 \pi x/w) e^{i k_{zb} z - i k_t t}$
 with $\frac{k_{zb}}{k_t} = \sqrt{1 - (b/w)^2}$,
 $b = 0\ldots$ a non-negative integer.
-
-<<>>=
-xx_b_full = xx_a_full[((params[:Na]-params[:Nb])+1):((params[:Na]+params[:Nb]))];
-assert(xx_b_full[1] + xx_b_full[end] == 0)
-Plots.plot(xx_b_full, cos.(0*2*pi*xx_b_full/params[:w]), label="\$p = 0\$")
-Plots.plot!(xx_b_full, cos.(1*2*pi*xx_b_full/params[:w]), label="\$p = 1\$")
-Plots.plot!(xx_b_full, cos.(2*2*pi*xx_b_full/params[:w]), label="\$p = 2\$")
-@ 
 
 
 ## Square root determination
@@ -98,12 +61,6 @@ The $E_z$ electric field is obtained from $E_z = D_z$, and
 $-i k_t D_z = \partial_x H_y$, or $E_z = \frac{i}{k_t} \partial_x H_y$.
 
 Then in the slit $E_{zb} = \frac{-i w}{2 b \pi k_t}\sin(b 2 \pi x/w) e^{i k_{zb} z - i k_t t}$
-
-<<>>=
-Plots.plot(xx_b_full, zeros(xx_b_full), label="\$p = 0\$")
-Plots.plot!(xx_b_full, (1/1.)*sin.(1*2*pi*xx_b_full/params[:w]), label="\$p = 1\$")
-Plots.plot!(xx_b_full, (1/2.)*sin.(2*2*pi*xx_b_full/params[:w]), label="\$p = 2\$")
-@ 
 
 # Interface equations
 
@@ -191,116 +148,21 @@ $S_{a b} = e_{a b} \left(1_{bb} - S_{b b}\right)$
 
 All these formulas are similar to Fresnel formulas. The $e_{ab}$ and $h_{ba}$ can be rectangular.
 
-# Discrete formulation
-
-## The DFT transform
-
-### natural mode matrix normalization
-
-<<>>=
-N = 128;
-xx = (collect(0:(N-1)) + 0.5)/(2*N); # span over half-width, with width = 1
-kxN = collect(0:(N-1)); # kxN = multiple of 1/width
-mcn  = cospi.(2*xx*kxN'); # cos 2 pi xx kxN
-mcin = cospi.(2*kxN*xx'); mcin[1,:] /= 2; mcin /= N/2;
-assert(maximum(abs.(mcn*mcin - eye(N))) < 1e-14)
-Plots.plot(xx, mcn[:,1])
-Plots.plot!(xx, mcn[:,2])
-Plots.plot!(xx, mcn[:,3])
-@
-
-### symmetric DFT-IDF normalization, used by Julia dft
-
-<<>>=
-N = 128;
-xx = (collect(0:(N-1)) + 0.5)/(2*N); # span over half-width, with width = 1
-kxN = collect(0:(N-1)); # kxN = multiple of 1/width
-mc  = cospi.(2*xx*kxN'); mc[:,1]  /= sqrt(2); mc  /= sqrt(N/2)
-mci = cospi.(2*kxN*xx'); mci[1,:] /= sqrt(2); mci /= sqrt(N/2)
-
-
-mj  = eye(N)
-mji = eye(N)
-for i in 1:N
-    mj[:,i]  = idct(mj[:,i])
-    mji[:,i] =  dct(mji[:,i])
-
-end
-
-assert(maximum(abs.(mc - mj)) < 1e-14)
-assert(maximum(abs.(mci - mji)) < 1e-14)
-assert(maximum(abs.(mc*mci - eye(N))) < 1e-14)
-assert(maximum(abs.(mj*mji - eye(N))) < 1e-14)
-
-Plots.plot((collect(0:(N-1)) + 0.5)/N, mc[:,1])
-Plots.plot!((collect(0:(N-1)) + 0.5)/N, mc[:,2])
-Plots.plot!((collect(0:(N-1)) + 0.5)/N, mc[:,3])
-@ 
-
 ## Computations
 
 <<>>=
-xx_a = xx_a_full[(params[:Na]+1):end]; # span over half-width D/2
-kxaN = collect(0:(params[:Na]-1))*params[:λ]/params[:D]; # kxN = multiple of 1/D
-kzaN = clean_msqrt.(1.0 - kxaN.^2);
+function compute_ks(params)
 
-xx_b = xx_b_full[(params[:Nb]+1):end]; # span over half-width w/2
-kxbN = collect(0:(params[:Nb]-1))*params[:λ]/params[:w]; # kxN = multiple of 1/w
-kzbN = clean_msqrt.(1.0 - kxbN.^2);
-
-assert(xx_a[1] == xx_b[1])
-assert(xx_a[1] + xx_a[end] == params[:D]/2)
-assert(xx_b[1] + xx_b[end] - params[:w]/2 < 1e-12)
-
-Plots.plot(xx_a, cospi.(2*kxaN[2]*xx_a))
-Plots.plot!(xx_b, cospi.(2*kxbN[2]*xx_b))
-
-Hαa = cospi.(2*xx_a*kxaN.'); # cos 2 pi xx kxN
-# Explicit inverse matrix
-Hinvaα = cospi.(2*kxaN*xx_a'); Hinvaα[1,:] /= 2; Hinvaα /= params[:Na]/2;
-assert(maximum(abs.(Hinvaα*Hαa - eyea)) < 1e-12)
-
-Eαa = Hαa*Diagonal(kzaN);
-# Explicit inverse matrix
-Einvaα = Diagonal(1.0./kzaN)*Hinvaα;
-assert(maximum(abs.(Einvaα*Eαa - eyea)) < 1e-10)
-
-Hβb = cospi.(2*xx_b*kxbN'); # cos 2 pi xx kxN
-# Explicit inverse matrix
-Hinvbβ = cospi.(2*kxbN*xx_b'); Hinvbβ[1,:] /= 2; Hinvbβ /= params[:Nb]/2;
-assert(maximum(abs.(Hinvbβ*Hβb - eyeb)) < 1e-12)
-
-Eβb = Hβb*Diagonal(kzbN);
-# Explicit inverse matrix
-Einvbβ = Diagonal(1.0./kzbN)*Hinvbβ;
-assert(maxdiff(Einvbβ*Eβb, eyeb) < 1e-10)
-
-# rectangular matrices
-hba = Hinvbβ*Hαa[1:params[:Nb],:];
-eab = Einvaα[:,1:params[:Nb]]*Eβb;
-
-Sba = (eyeb + hba*eab)\(2*hba);
-Saa = eyea - eab*Sba;
-Saat = (eyea + eab*hba)\(eyea - eab*hba);
-assert(maxdiff(Saa, Saat) < 1e-14)
-
-Sbb = (eyeb + hba*eab)\(-eyeb + hba*eab);
-Sab = eab*(eyeb - Sbb);
-Sabt = (eyea + eab*hba)\(2*eab);
-assert(maxdiff(Sab, Sabt) < 1e-14)
-
-# energy conservation a->b
-energya = abs2(Sba[1,1])*params[:w]/params[:D] + abs2(Saa[1,1])
-assert(maxdiff(energya, 1.0) < 1e-14)
-
-# energy conservation b->a
-energyb = abs2(Sab[1,1])*params[:D]/params[:w] + abs2(Sbb[1,1])
-assert(maxdiff(energyb, 1.0) < 1e-14)
-
-# reciprocity
-assert(maxdiff(abs2(Sba[1,1])*params[:w]/params[:D], abs2(Sab[1,1])*params[:D]/params[:w]) < 1e-14)
-@ 
-
+    kxaN = collect(0:(params[:Na]-1))*params[:λ]/params[:D]; # kxN = multiple of 1/D
+    kzaN = clean_msqrt.(1.0 - kxaN.^2);
+    kxbN = collect(0:(params[:Nb]-1))*params[:λ]/params[:w]; # kxN = multiple of 1/w
+    kzbN = clean_msqrt.(1.0 - kxbN.^2);
+    return Dict{Symbol,Any}(:kxaN => kxaN,
+                            :kzaN => kzaN,
+                            :kxbN => kxbN,
+                            :kzbN => kzbN)
+end
+@
 
 # Continuous formulation
 
@@ -354,46 +216,74 @@ $e_{0 b} = \int_{-w/2}^{w/2} \frac{1}{w} \cos(a \frac{2 \pi}{D} x) dx
 
 
 <<>>=
-hba = Array{Complex{Float64},2}(params[:Nb],params[:Na]);
-eab = Array{Complex{Float64},2}(params[:Na],params[:Nb]);
+function compute_with_sincs(params)
+    eyea = Diagonal(ones(params[:Na]));
+    eyeb = Diagonal(ones(params[:Nb]));
 
-sf = params[:w]/params[:D]
-for ia in 1:params[:Na]
-    a = ia - 1
-    hba[1, ia] = sinc(a*sf)
-    for ib in 2:params[:Nb]
-        b = ib - 1
-        hba[ib, ia] = sinc(b - a*sf) + sinc(b + a*sf)
-    end
-end
+    ks = compute_ks(params)
+    kzaN = ks[:kzaN]
+    kzbN = ks[:kzbN]
+        
+    hba = Array{Complex{Float64},2}(params[:Nb],params[:Na]);
+    eab = Array{Complex{Float64},2}(params[:Na],params[:Nb]);
 
-for ib in 1:params[:Nb]
-    b = ib - 1
-    eab[1, ib] = sf*(kzbN[ib]/kzaN[1])*sinc(b)
-    for ia in 2:params[:Na]
+    sf = params[:w]/params[:D]
+    for ia in 1:params[:Na]
         a = ia - 1
-        eab[ia, ib] = sf*(kzbN[ib]/kzaN[ia])*(sinc(b - a*sf) + sinc(b + a*sf))
+        hba[1, ia] = sinc(a*sf)
+        for ib in 2:params[:Nb]
+            b = ib - 1
+            hba[ib, ia] = sinc(b - a*sf) + sinc(b + a*sf)
+        end
     end
+    
+    for ib in 1:params[:Nb]
+        b = ib - 1
+        eab[1, ib] = sf*(kzbN[ib]/kzaN[1])*sinc(b)
+        for ia in 2:params[:Na]
+            a = ia - 1
+            eab[ia, ib] = sf*(kzbN[ib]/kzaN[ia])*(sinc(b - a*sf) + sinc(b + a*sf))
+        end
+    end
+    
+    Sba = (eyeb + hba*eab)\(2*hba);
+    Saa = eyea - eab*Sba;
+    Sbb = (eyeb + hba*eab)\(-eyeb + hba*eab);
+    Sab = eab*(eyeb - Sbb);
+    
+    # energy conservation a->b
+    energya = abs2(Sba[1,1])*params[:w]/params[:D] + abs2(Saa[1,1])
+    assert(maxdiff(energya, 1.0) < 1e-14)
+    
+    # energy conservation b->a
+    energyb = abs2(Sab[1,1])*params[:D]/params[:w] + abs2(Sbb[1,1])
+    assert(maxdiff(energyb, 1.0) < 1e-14)
+    
+    # reciprocity
+    assert(maxdiff(abs2(Sba[1,1])*params[:w]/params[:D], abs2(Sab[1,1])*params[:D]/params[:w]) < 1e-14)
+
+    return Dict{Symbol,Any}(:Saa => Saa,
+                            :Sab => Sab,
+                            :Sba => Sba,
+                            :Sbb => Sbb)
 end
+@ 
 
-Sba = (eyeb + hba*eab)\(2*hba);
-Saa = eyea - eab*Sba;
-Saat = (eyea + eab*hba)\(eyea - eab*hba);
-assert(maxdiff(Saa, Saat) < 1e-14)
+<<>>=
+params = Dict{Symbol,Any}(:λ  => 1.0,
+                          :D  => 0.5,
+                          :Na => 600,
+                          :Nb => 100)
+params[:w] = params[:D]/6;
+maxdiff(a, b) = maximum(abs.(a - b))
 
-Sbb = (eyeb + hba*eab)\(-eyeb + hba*eab);
-Sab = eab*(eyeb - Sbb);
-Sabt = (eyea + eab*hba)\(2*eab);
-assert(maxdiff(Sab, Sabt) < 1e-14)
+rbest = 0.533522892163     # params[:Nb] = 1000; params[:Na] = 6*params[:Nb]; rbest = abs2(compute_with_sincs(params)[:Saa][1,1])
+rbest = 0.533522891700889  # params[:Nb] = 2000; params[:Na] = 6*params[:Nb]; rbest = abs2(compute_with_sincs(params)[:Saa][1,1])
+rbest = 0.5335228917007351 # params[:Nb] = 2001; params[:Na] = 6*params[:Nb]; rbest = abs2(compute_with_sincs(params)[:Saa][1,1])
+rbest = 0.5335228916454655 # params[:Nb] = 2500; params[:Na] = 6*params[:Nb]; rbest = abs2(compute_with_sincs(params)[:Saa][1,1])
+rbest = 0.5335228916153608 # params[:Nb] = 3000; params[:Na] = 6*params[:Nb]; rbest = abs2(compute_with_sincs(params)[:Saa][1,1])
+rbest = 0.5335228916
 
-# energy conservation a->b
-energya = abs2(Sba[1,1])*params[:w]/params[:D] + abs2(Saa[1,1])
-assert(maxdiff(energya, 1.0) < 1e-14)
+assert(abs(abs2(compute_with_sincs(params)[:Saa][1,1]) - rbest) < 1e-7)
 
-# energy conservation b->a
-energyb = abs2(Sab[1,1])*params[:D]/params[:w] + abs2(Sbb[1,1])
-assert(maxdiff(energyb, 1.0) < 1e-14)
-
-# reciprocity
-assert(maxdiff(abs2(Sba[1,1])*params[:w]/params[:D], abs2(Sab[1,1])*params[:D]/params[:w]) < 1e-14)
 @ 
