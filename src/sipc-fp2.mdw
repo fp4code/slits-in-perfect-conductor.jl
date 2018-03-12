@@ -17,13 +17,15 @@ Plots.gr(); # Plots will use GR as backend
 absclip(m, x) = min(m, abs(x))
 
 import MAT
+
 @ 
 
 Previous in file sipc-fp.mdw
 
 <<>>=
-vars = MAT.matread("/home/fab/Z/sipc-fp.mat")
+vars = MAT.matread("/home/fab/Z/sipc-fp.2.mat")
 
+tt = vars["tt"]
 xx = vars["xx"]
 zz = vars["zz"]
 ex = vars["fields"]["ex"]
@@ -65,3 +67,38 @@ ps[nc-1:-1:1,:] = ps[nc:nc,:] .+ cumsum((fsx1[1:end-1,:] + fsx1[2:end,:]).*diff(
 Plots.contour(xx, zz, ps.', title="Poynting lines")
 @ 
 
+We suppose an uniform meshing
+
+<<>>=
+assert(maximum(diff(tt)) - minimum(diff(tt)) < 1e-12)
+assert(maximum(diff(xx)) - minimum(diff(xx)) < 1e-12)
+assert(maximum(diff(zz)) - minimum(diff(zz)) < 1e-12)
+@ 
+
+Ne marche pas
+
+<<>>=
+import Interpolations
+iex = Interpolations.interpolate(ex, Interpolations.Linear(Interpolations.OnGrid()), Interpolations.ExtrapError())
+
+using Interpolations
+f(x,y) = sin(x/10)*cos(y/6)
+xmax, ymax = 30,10
+A = Float64[f(x,y) for x in 1:xmax, y in 1:ymax]
+iex = interpolate(A, Linear(OnGrid()), ExtrapError())
+@ 
+
+
+<<>>=
+import GridInterpolations
+
+grid = GridInterpolations.RectangleGrid(tt, xx, zz)
+sgrid = GridInterpolations.SimplexGrid(tt, xx, zz)
+
+it = 3
+ix = 21
+iz = 31
+assert(GridInterpolations.interpolate(grid, ex, [tt[it], xx[ix], zz[iz]]) == ex[it, ix, iz])
+
+
+@ 

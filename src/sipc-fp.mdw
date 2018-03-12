@@ -506,7 +506,7 @@ function compute_fields(params, g, t0, xx, zz)
     mhy = Array{Float64,2}(length(xx), length(zz))
     mez = Array{Float64,2}(length(xx), length(zz))
     for iz in 1:length(zz)
-        println(iz)
+        println(STDERR, iz)
         for ix in 1:length(xx)
             f = field(params, g, t0, xx[ix], zz[iz])
             mex[ix, iz] = f.ex
@@ -680,7 +680,7 @@ function full_fields(params, g, fof)
     mhy = Array{Float64, 3}(length(fof.tt), length(fof.xx), n1+n2+n3)
     mez = Array{Float64, 3}(length(fof.tt), length(fof.xx), n1+n2+n3)
     for iz in 1:n1
-        println(iz)
+        println(STDERR, iz)
         for ix in 1:length(fof.xx)
             for it in 1:length(fof.tt)
                 ex = 0.0im
@@ -698,7 +698,7 @@ function full_fields(params, g, fof)
         end
     end
     for iz in 1:n2
-        println(iz)
+        println(STDERR, iz)
         for ix in 1:length(fof.xx)
             for it in 1:length(fof.tt)
                 ex = 0.0im
@@ -716,7 +716,7 @@ function full_fields(params, g, fof)
         end
     end
     for iz in 1:n3
-        println(iz)
+        println(STDERR, iz)
         for ix in 1:length(fof.xx)
             for it in 1:length(fof.tt)
                 ex = 0.0im
@@ -849,25 +849,26 @@ r = compute_with_sincs(params)
 h0 = -angle(r[:Sbb][1,1])/(real(r[:kzbN][1])*2*pi/params[:λ])
 params[:h] = 1.0*h0+params[:λ]/2
 
+
 dxx = 0.005
 xx = (-params[:D]/2):dxx:(params[:D]/2)
 tt = 0.0:dxx:params[:λ]
 dzz = dxx
-zz1 = -2.0:dzz:-params[:h]
-zz2 = (zz1[end]+dzz):dzz:-dzz
-zz3 = 0.0:dzz:1.0
-zz = [zz1;zz2;zz3]
+zz = -2.0:dzz:1.0
+zz1 = zz[find(zz .<= -params[:h])]
+zz2 = zz[find(-params[:h] .< zz .< 0)]
+zz3 = zz[find(0 .<= zz)]
 
 g = grating(params, params[:Nb], params[:h])
 fof = compute_fieldof(params, g, tt, xx, zz1, zz2, zz3);
 f = full_fields(params, g, fof);
 
 using MAT
-file = matopen("/home/fab/Z/sipc-fp.mat", "w")
+file = matopen("/home/fab/Z/sipc-fp.4.mat", "w")
 write(file, "fields", f)
 write(file, "tt", collect(tt))
 write(file, "xx", collect(xx))
-write(file, "zz", zz)
+write(file, "zz", collect(zz))
 close(file)
 @ 
 
