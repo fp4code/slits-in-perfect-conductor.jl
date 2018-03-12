@@ -1,0 +1,67 @@
+-----
+
+This file can be opened with emacs and mar-mode,
+Cf. also [Weave doc](http://weavejl.mpastell.com/stable/).
+
+For more details, see sipc-toy.mdw, sipc.mdw
+
+<<>>=
+# Define the command p() to construct sipc-fp2.html file from this file:
+import Weave
+p() = Weave.weave("sipc-fp2.mdw")
+
+using NamedTuples
+
+import Plots
+Plots.gr(); # Plots will use GR as backend
+absclip(m, x) = min(m, abs(x))
+
+import MAT
+@ 
+
+Previous in file sipc-fp.mdw
+
+<<>>=
+vars = MAT.matread("/home/fab/Z/sipc-fp.mat")
+
+xx = vars["xx"]
+zz = vars["zz"]
+ex = vars["fields"]["ex"]
+hy = vars["fields"]["hy"]
+ez = vars["fields"]["ez"]
+
+p1 = Plots.contour(xx,zz,absclip.(2.0, ex[1,:,:].'),fill=true, title="ex")
+p2 = Plots.contour(xx,zz,absclip.(2.0, hy[1,:,:].'),fill=true, title="hy")
+p3 = Plots.contour(xx,zz,absclip.(2.0, ez[1,:,:].'),fill=true, title="dz")
+Plots.plot(p1, p2, p3)
+@ 
+
+<<>>=
+sx = -ez .* hy
+sz = ex .* hy
+
+sxm = sum(sx, 1)[1,:,:]/size(sx,1)
+szm = sum(sz, 1)[1,:,:]/size(sz,1)
+
+fsx = -szm
+fsz = sxm
+
+nx = length(xx)
+nz = length(zz)
+
+nc = (nx+1)÷2
+
+fsz0 = fsz[nc,:]
+fsx1 = fsx[nc:-1:1,:]
+fsx2 = fsx[nc:end,:]
+
+ps = Array{Float64, 2}(nx, nz)
+ps[nc,1] = 0
+ps[nc,2:end] = ps[nc,1] + cumsum((fsz0[1:end-1] + fsz0[2:end]).*diff(zz))
+
+ps[nc+1:end,:] = ps[nc:nc,:] .+ cumsum((fsx2[1:end-1,:] + fsx2[2:end,:]).*diff(xx[nc:end]), 1)
+ps[nc-1:-1:1,:] = ps[nc:nc,:] .+ cumsum((fsx1[1:end-1,:] + fsx1[2:end,:]).*diff(xx[nc:-1:1]), 1)
+
+Plots.contour(xx, zz, ps.', title="Poynting lines")
+@ 
+

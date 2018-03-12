@@ -11,8 +11,12 @@ import Weave
 p() = Weave.weave("sipc-fp.mdw")
 
 using NamedTuples
+
 import Plots
 Plots.gr(); # Plots will use GR as backend
+absclip(m, x) = min(m, abs(x))
+
+maxdiff(a, b) = maximum(abs.(a - b))
 @ 
 
 -----
@@ -26,7 +30,6 @@ params = Dict{Symbol,Any}(:λ  => 1.0,
                           :Na => 600,
                           :Nb => 100)
 params[:w] = params[:D]*params[:Nb]/params[:Na];
-maxdiff(a, b) = maximum(abs.(a - b))
 @ 
 
 ## Field in vacuum
@@ -304,7 +307,7 @@ function compute_with_sincs(params)
 end
 @ 
 
-# Slit of height $h$
+# Grating made of slits with a height $h$
 
 The $R_{aa}$ and $T_{aa}$ $S$-matrix terms of a grating of height $h$ are:
 
@@ -497,9 +500,25 @@ function field(params, g, t, x, z)
     end
     return @NT(ex=real(ex), hy=real(hy), ez=real(ez))
 end
+
+function compute_fields(params, g, t0, xx, zz)
+    mex = Array{Float64,2}(length(xx), length(zz))
+    mhy = Array{Float64,2}(length(xx), length(zz))
+    mez = Array{Float64,2}(length(xx), length(zz))
+    for iz in 1:length(zz)
+        println(iz)
+        for ix in 1:length(xx)
+            f = field(params, g, t0, xx[ix], zz[iz])
+            mex[ix, iz] = f.ex
+            mhy[ix, iz] = f.hy
+            mez[ix, iz] = f.ez
+        end
+    end
+    return @NT(ex=mex, hy=mhy, ez=mez)
+end
 @ 
 
-A more efficient way is to precompute separately $t$, $x$ and $z$ dependencies
+A more efficient way is to precompute separately complex functions of $t$, $x$ and $z$ 
 
 <<>>=
 function fieldoft(params, tt)
@@ -721,29 +740,21 @@ function full_fields(params, g, fof)
 end
 @ 
 
+Control of Maxwell's equations
+
 <<>>=
 # controls
 
-params[:Nb] = 2
-params[:Na] = 12
-r = compute_with_sincs(params)
-h0 = -angle(r[:Sbb][1,1])/(real(r[:kzbN][1])*2*pi/params[:λ])
-r0 = abs2(grating(params, params[:Nb], h0)[:Raa][1,1])
-g = grating(params, params[:Nb], h0)
-params[:h] = h0
-
+params[:Nb] = 100
+params[:Na] = 600
 
 params[:h] = 0.1
-
 g = grating(params, params[:Nb], params[:h])
+
 t0 = 0.01
-x0 = 0.2
-z0 = 0.01
-ee = 0.00001
-
-
-z0 = 0.001
 x0 = 0.03
+z0 = 0.025
+ee = 0.000001
 
 assert(abs(field(params, g, t0+ee, x0, z0).ex - field(params, g, t0-ee, x0, z0).ex -
            (field(params, g, t0, x0, z0-ee).hy - field(params, g, t0, x0, z0+ee).hy)) < 1e-10)
@@ -772,113 +783,11 @@ assert(abs(field(params, g, t0+ee, x0, z0).ez - field(params, g, t0-ee, x0, z0).
 field(params, g, t0, x0, 1e-9).ex
 field(params, g, t0, x0, -1e-9).ex
 
-params[:h] = h0
-g = grating(params, params[:Nb], params[:h])
+zz = -0.5:0.001:0.5
+Plots.plot(zz, z -> field(params, g, t0, x0, z).ex)
 @ 
 
-<<>>=
-params[:Nb] = 20
-params[:Na] = 120
-params[:h] = 0.2
-
-dxx = params[:D]/(2*params[:Na])
-xx = dxx*((1:2*params[:Na]) - params[:Na] - 0.5)
-zz = -1:0.01:1
-length(zz)
-
-function compute_fields(params, g, t0, xx, zz)
-    mex = Array{Float64,2}(length(xx), length(zz))
-    mhy = Array{Float64,2}(length(xx), length(zz))
-    mez = Array{Float64,2}(length(xx), length(zz))
-    for iz in 1:length(zz)
-        println(iz)
-        for ix in 1:length(xx)
-            f = field(params, g, t0, xx[ix], zz[iz])
-            mex[ix, iz] = fof.ex
-            mhy[ix, iz] = fof.hy
-            mez[ix, iz] = fof.ez
-        end
-    end
-    return @NT(ex=mex, hy=mhy, ez=mez)
-end
-
-r = compute_with_sincs(params)
-h0 = -angle(r[:Sbb][1,1])/(real(r[:kzbN][1])*2*pi/params[:λ])
-params[:h] = 1.0*h0
-g = grating(params, params[:Nb], params[:h])
-f = compute_fields(params, g, t0, xx, zz)
-
-
-p1 = Plots.contour(xx,zz,abs.(f.ex.'),fill=true)
-p2 = Plots.contour(xx,zz,abs.(f.hy.'),fill=true)
-p3 = Plots.contour(xx,zz,abs.(f.ez.'),fill=true)
-Plots.plot(p1,p2,p3)
-
-
-Plots.plot(zz, f.ex[121, :])
-Plots.plot(zz, f.ex[50, :])
-
-Plots.plot(zz, f.hy[121, :])
-Plots.plot!(zz, f.hy[120, :])
-
-Plots.plot(zz, f.hy[50, :])
-
-Plots.plot(zz, f.ez[121, :])
-Plots.plot!(zz, f.ez[120, :])
-
-Plots.plot(zz, f.ez[50, :])
-@ 
-
-Fast version test
-
-<<>>=
-params[:Nb] = 50
-params[:Na] = 300
-h0 = -angle(r[:Sbb][1,1])/(real(r[:kzbN][1])*2*pi/params[:λ])
-params[:h] = 1.0*h0
-
-tt = [0.01]
-dxx = params[:D]/(2*params[:Na])
-xx = dxx*((1:2*params[:Na]) - params[:Na] - 0.5)
-dzz = 0.01
-zz1 = -1.0:dzz:-params[:h]
-zz2 = (zz1[end]+dzz):dzz:0.0
-zz3 = (zz2[end]+dzz):dzz:1.0
-zz1 = linspace(-1.0,-params[:h],50)
-zz3 = linspace(0,1.0,50)
-zz2 = linspace(-params[:h]+0.01,-0.01,50)
-zz = [zz1;zz2;zz3]
-
-
-
-
-g = grating(params, params[:Nb], params[:h])
-fof = compute_fieldof(params, g, tt, xx, zz1, zz2, zz3)
-f = full_fields(params, g, fof)
-
-function absclip(m, x)
-    a = abs(x)
-    if a > m
-        return m
-    else
-        return a
-    end
-end
-
-
-p1 = Plots.contour(xx,zz,absclip.(2.0, f.ex[1,:,:].'),fill=true)
-p2 = Plots.contour(xx,zz,absclip.(2.0, f.hy[1,:,:].'),fill=true)
-p3 = Plots.contour(xx,zz,absclip.(2.0, f.ez[1,:,:].'),fill=true)
-Plots.plot(p1,p2,p3)
-
-
-Plots.plot(zz, f.ex[1,2,:])
-Plots.plot!(zz, f.hy[1,120,:])
-
-
-@ 
-
-
+Contour plots
 
 <<>>=
 params[:Nb] = 5
@@ -900,30 +809,66 @@ zz = [zz1;zz2;zz3]
 g = grating(params, params[:Nb], params[:h])
 f0 = compute_fields(params, g, t0, xx, zz)
 
-fof = compute_fieldof(params, g, tt, xx, zz1, zz2, zz3)
+fof = compute_fieldof(params, g, tt, xx, zz1, zz2, zz3);
 f1 = full_fields(params, g, fof);
-
-p20 = Plots.contour(xx,zz,abs.(f0.hy[:,:].'),fill=true)
-p21 = Plots.contour(xx,zz,abs.(f1.hy[1,:,:].'),fill=true)
-
-p10 = Plots.contour(xx,zz,absclip.(2.0, f0.ex[:,:].'),fill=true)
-p11 = Plots.contour(xx,zz,absclip.(2.0, f1.ex[1,:,:].'),fill=true)
-
-
-Plots.plot(zz, f0.hy[31,:])
-Plots.plot!(zz, f1.hy[1,31,:])
-
-Plots.plot(zz, f0.ex[1,:])
-Plots.plot!(zz, f1.ex[1,1,:])
-
-Plots.plot(zz, f0.ex[31,:])
-Plots.plot!(zz, f1.ex[1,31,:])
-
-fof.t.ex[1]*fof.xa.ex[31,1]*fof.zR.ex[1,1]
-fof.t.ex[1]*fof.xa.ex[31,2]*fof.zR.ex[1,2]
-fof.t.ex[1]*fof.xa.ex[31,3]*fof.zR.ex[1,3]
-
 @ 
 
+<<>>=
+p20 = Plots.contour(xx,zz,abs.(f0.hy[:,:].'),fill=true)
+p21 = Plots.contour(xx,zz,abs.(f1.hy[1,:,:].'),fill=true)
+Plots.plot(p20,p21)
+@ 
 
+<<>>=
+p10 = Plots.contour(xx,zz,absclip.(2.0, f0.ex[:,:].'),fill=true)
+p11 = Plots.contour(xx,zz,absclip.(2.0, f1.ex[1,:,:].'),fill=true)
+Plots.plot(p10,p11)
+@ 
 
+<<>>=
+Plots.plot(zz, f0.hy[31,:])
+Plots.plot!(zz, f1.hy[1,31,:])
+@ 
+
+<<>>=
+Plots.plot(zz, f0.ex[1,:])
+Plots.plot!(zz, f1.ex[1,1,:])
+@ 
+
+<<>>=
+Plots.plot(zz, f0.ex[31,:])
+Plots.plot!(zz, f1.ex[1,31,:])
+@ 
+
+High precision computing
+
+<<>>=
+params[:Nb] = 100
+params[:Na] = 600
+r = compute_with_sincs(params)
+h0 = -angle(r[:Sbb][1,1])/(real(r[:kzbN][1])*2*pi/params[:λ])
+params[:h] = 1.0*h0+params[:λ]/2
+
+dxx = 0.005
+xx = (-params[:D]/2):dxx:(params[:D]/2)
+tt = 0.0:dxx:params[:λ]
+dzz = dxx
+zz1 = -2.0:dzz:-params[:h]
+zz2 = (zz1[end]+dzz):dzz:-dzz
+zz3 = 0.0:dzz:1.0
+zz = [zz1;zz2;zz3]
+
+g = grating(params, params[:Nb], params[:h])
+fof = compute_fieldof(params, g, tt, xx, zz1, zz2, zz3);
+f = full_fields(params, g, fof);
+
+using MAT
+file = matopen("/home/fab/Z/sipc-fp.mat", "w")
+write(file, "fields", f)
+write(file, "tt", collect(tt))
+write(file, "xx", collect(xx))
+write(file, "zz", zz)
+close(file)
+@ 
+
+Next in file sipc-fp2.mdw
